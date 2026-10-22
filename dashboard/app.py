@@ -15,6 +15,11 @@ import pyarrow.parquet as pq
 import streamlit as st
 import yaml
 
+# Ensure project root is in sys.path before importing local packages
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 from perception.image_inference import (
     ImageValidationError,
     TrafficImageAnalyzer,
@@ -22,11 +27,6 @@ from perception.image_inference import (
     export_results_to_csv,
     export_results_to_json,
 )
-
-# Ensure project root is in sys.path
-REPO_ROOT = Path(__file__).resolve().parent.parent
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
 
 
 @st.cache_resource
