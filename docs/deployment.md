@@ -99,13 +99,17 @@ Because the system leverages cameras already installed by police, PWD, or munici
 In strict accordance with the **Digital Personal Data Protection (DPDP) Act, 2023** and municipal surveillance governance standards:
 
 1. **Zero Personally Identifiable Information (PII)**:
-   - The platform strictly omits Automatic Number Plate Recognition (ANPR) and facial recognition.
+   - The platform strictly omits Automatic Number Plate Recognition (ANPR) and facial recognition across both video and still image processing modes.
    - Bounding boxes identify only coarse vehicular silhouettes (`car`, `motorcycle`, `auto_rickshaw`, `bus`, `truck`).
-2. **Local Video Confinement**:
-   - Camera video frames reside in volatile RAM on the local edge node only during inference (lifespan <100ms).
-   - Video buffers are immediately discarded; raw video streams never leave the junction edge box or cross external network boundaries.
-3. **Pure Kinematic Telemetry**:
+2. **Local Video and Photograph Confinement**:
+   - Camera video frames and user-uploaded traffic photographs reside in volatile RAM on the local compute node only during inference (lifespan <100ms for video frames; discarded immediately after analysis for uploaded still images).
+   - Video buffers and photograph uploads are never written to permanent disk storage, logged, or egressed across network boundaries.
+   - Zero transmission of images or frames to external services, commercial cloud vision APIs, or LLM providers.
+3. **Pure Kinematic Telemetry & Aggregation**:
    - Upstream communications are restricted to mathematical aggregates (velocity vectors, acceleration state, vehicle counts, carbon grams). No visual reconstructibility is possible from transmitted payloads.
+4. **Input Security & Guardrails for Image Uploads**:
+   - Allowed formats are strictly restricted to `.jpg`, `.jpeg`, `.png`, and `.webp` with file-size boundaries enforced (max 20 MB).
+   - Safe error handling prevents exposing filesystem paths, environment variables, or system secrets in user-facing error messages.
 
 ---
 
