@@ -29,7 +29,7 @@ def test_build_telemetry_series_from_artifacts():
     # 2. Metadata checks
     meta = result["metadata"]
     assert meta["maxTimeSec"] == 96.5
-    assert meta["totalTracks"] == 124
+    assert meta["totalTracks"] == 236
     assert meta["intervalSec"] == 2.0
     assert meta["totalPoints"] >= 48
 

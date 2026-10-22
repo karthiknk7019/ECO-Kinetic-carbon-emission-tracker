@@ -301,6 +301,7 @@ def test_pipeline_with_injected_detector(tmp_path: Path):
         ("cx_norm", pa.float32()),
         ("cy_norm", pa.float32()),
         ("bbox_w_px", pa.float32()),
+        ("bbox_h_px", pa.float32()),
         ("speed_kmh", pa.float32()),
         ("state", pa.string()),
         ("track_age_frames", pa.int32()),
