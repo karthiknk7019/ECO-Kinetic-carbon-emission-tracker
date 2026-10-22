@@ -77,6 +77,14 @@ def compute_track_emissions(
         df["co2_cum_g"] = np.array([], dtype=float)
         return df
 
+    required_cols = {"track_id", "video_time_s", "cls", "state", "speed_kmh", "track_age_frames"}
+    missing_cols = required_cols - set(df.columns)
+    if missing_cols:
+        raise ValueError(
+            f"Cannot calculate dynamic emissions: missing required tracking/kinematic columns: {sorted(list(missing_cols))}. "
+            "Single-frame image detections lack temporal history and cannot be fed into the emission engine."
+        )
+
     # Calculate dt_s per track from video_time_s deltas
     # Sort temporarily by track_id and video_time_s to ensure proper diffs
     orig_index = df.index

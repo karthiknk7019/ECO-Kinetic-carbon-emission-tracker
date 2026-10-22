@@ -266,3 +266,15 @@ def test_scenario_execution_time(emission_factors):
 
     assert elapsed < 1.0, f"apply_scenario took {elapsed:.3f}s (target < 1.0s)"
     assert res["avoided_g"] > 0
+
+
+def test_emission_engine_rejects_static_image_detections(emission_factors):
+    """Confirm emission engine refuses to calculate emissions on static image detections."""
+    static_detections_df = pd.DataFrame([
+        {"detection_index": 1, "class_name": "car", "confidence": 0.85, "bbox_w_px": 80.0},
+        {"detection_index": 2, "class_name": "truck", "confidence": 0.75, "bbox_w_px": 120.0},
+    ])
+
+    with pytest.raises(ValueError, match="Cannot calculate dynamic emissions"):
+        compute_track_emissions(static_detections_df, emission_factors)
+
