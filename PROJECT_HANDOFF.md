@@ -169,6 +169,13 @@ This project retrofits existing municipal CCTV traffic camera fleets into a real
 - **Multi-Dimensional Filters & Search:** Live search across junction IDs, directive IDs, actions, and rationale keywords, plus dual-row status (`Pending`, `Dispatched`, `Dismissed`) and mode (`Gemini 1.5 Flash`, `Rules Fallback`) filter tabs with badge counts.
 - **Production Validation:** Zero ESLint warnings/errors and clean static build via `npm run build` in `dashboard-web/`.
 
+### ✅ Traffic Image Intelligence (Single-Frame Photograph Analysis)
+- **Perception Backend (`perception/image_inference.py`):** Reusable CPU-first single-image analyzer (`TrafficImageAnalyzer`) with cached YOLO weights, rigorous format validation (`.jpg`, `.jpeg`, `.png`, `.webp`), byte size limits (20 MB), and dynamic class resolution.
+- **Accurate Model Taxonomy:** Automatically intersects configured `active_classes` with loaded weights; transparently reports missing classes (e.g. stock COCO `auto_rickshaw` limitation) without hallucinating detections.
+- **Strict Guardrails:** Guaranteed absence of fabricated speeds, accelerations, motion states, or emissions for still images.
+- **Streamlit Integration (`dashboard/app.py`):** Sidebar navigation mode offering image upload, confidence slider, process button, original vs annotated preview, KPI cards, class breakdown chart, detection table, and JPG/CSV/JSON exports.
+- **Test Suite Health:** **72/72 tests passing** (`pytest -q` in ~33s) with dedicated coverage in `tests/test_image_intelligence.py`.
+
 ---
 
 ## 3. What HAS TO BE DONE (Pending Tasks & Open Gaps)
@@ -207,13 +214,15 @@ When handing off this project to another LLM, enforce the following non-negotiab
 | `perception/detector.py` | Complete | NMS-free YOLO inference with active class filtering |
 | `perception/tracker.py` | Complete | ByteTrack tracker wrapper |
 | `perception/kinematics.py` | Complete | Speed proxy, EMA smoothing, 4-state kinematic classifier |
+| `perception/image_inference.py` | Complete | Reusable single-image vehicle detector & export utilities |
 | `twin/emission_engine.py` | Complete | Mode-bin CO2 emission accumulator |
 | `twin/corridor.py` | Complete | 60s window rollups, 4x4 choke points, dispatcher payload |
 | `twin/scenarios.py` | Complete | Counterfactual policy engine (EV mix, green extension) |
 | `dispatcher/schema.py` | Complete | Pydantic contracts for actions, directives, payloads |
 | `dispatcher/rules_fallback.py` | Complete | Deterministic rule-based dispatcher fallback |
 | `dispatcher/llm_dispatcher.py` | Complete | Schema-constrained LLM client + Python CO2 inject |
-| `dashboard/app.py` | Complete | Streamlit command UI & what-if simulator |
+| `dashboard/app.py` | Complete | Streamlit command UI with Video Twin & Image Intelligence modes |
+| `tests/test_image_intelligence.py` | Complete | Unit & integration tests for single-image perception backend |
 | `dashboard-web/src/components/MunicipalDispatchFeed.tsx` | Complete | GenAI advisory feed & ATCS/SCATS dispatch control center |
 | `scripts/run_pipeline.py` | Complete | Video $\rightarrow$ tracking $\rightarrow$ kinematics $\rightarrow$ `telemetry.parquet` |
 | `scripts/render_overlay.py` | Complete | Video annotator with state colors and CO2 values |

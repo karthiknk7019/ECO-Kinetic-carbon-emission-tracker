@@ -105,7 +105,29 @@ python scripts/run_pipeline.py --mock
 ```bash
 streamlit run dashboard/app.py
 ```
-Open `http://localhost:8501` in your browser to view the real-time KPIs, choke zones, synced overlay player, counterfactual simulator, and live dispatcher directives.
+Open `http://localhost:8501` in your browser. Use the left sidebar to navigate between:
+1. **Junction Video Operations**: Continuous tracking overlay, 60s kinematic window, 4x4 spatial choke grid, What-If counterfactual policy simulation, and municipal directive stream.
+2. **Image Intelligence**: Instantaneous single-frame photograph vehicle perception with bounding boxes, class distribution, and data exports.
+
+### Step 5b: Traffic Image Intelligence (Single-Frame Analysis)
+
+Users can analyze stationary intersection photographs without requiring the continuous video pipeline:
+- **Workflow**:
+  1. Select **Image Intelligence** in the sidebar.
+  2. Upload any traffic photograph (`.jpg`, `.jpeg`, `.png`, or `.webp`, max 20 MB).
+  3. Preview original photograph and select desired detection confidence threshold (default: `0.30`).
+  4. Click **Process Image** to run CPU-only YOLO inference.
+  5. Inspect annotated bounding boxes, vehicle counts, mean confidence, latency (ms), and class distribution chart.
+  6. Download annotated images and detection ledgers as CSV or JSON.
+- **Model Taxonomy & Class Support**:
+  - Configured in `config/app.yaml` (`yolo26n.pt` on CPU). Dynamically resolves `model.names ∩ active_classes`.
+  - Stock COCO weights support 4 vehicle classes: `car`, `motorcycle`, `bus`, and `truck`.
+  - *Auto-Rickshaw Limitation Note:* Off-the-shelf COCO models lack a dedicated `auto_rickshaw` class. The UI transparently reports this constraint without inventing detections. When 5-class Indian taxonomy is required, fine-tuned weights (`models/finetuned/best.pt`) are available.
+- **Strict Privacy & Input Security**:
+  - 100% local CPU processing in volatile memory. No photographs or frames are transmitted to external services, commercial APIs, or LLMs.
+  - Zero PII: Excludes facial recognition and license plate recognition (ANPR).
+- **Physical Boundaries (No Fabricated Kinematics or Emissions)**:
+  - Single still images represent instantaneous snapshots. Speed, acceleration, stop events, and cumulative tailpipe emissions are **never fabricated from a static photograph**. Dynamic emissions are exclusively modeled in the video pipeline.
 
 ### Step 6: Launch Next.js ATCS Municipal Operations Center
 ```bash

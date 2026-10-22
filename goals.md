@@ -115,3 +115,12 @@ Multi-camera fusion, RTSP ingestion (mention as thin adapter in docs only),homog
 - Re-running `scripts/render_overlay.py` automatically generates the H.264 web-compatible `overlay.mp4` with `+faststart` and syncs it to `dashboard-web/public/overlay.mp4`.
 - `CctvPlayer.tsx` dynamically detects `video.duration` upon load and supports switching between `AI CCTV Twin`, `Raw CCTV`, and `Vector Twin`.
 
+11. Image Intelligence Specification & Status [COMPLETE]
+- **Perception Backend**: `perception/image_inference.py` (`TrafficImageAnalyzer`, `validate_and_decode_image`).
+- **CPU-First Architecture**: Strictly runs on CPU using cached YOLO weights (`get_cached_yolo_model`).
+- **Format Support & Validation**: Supports `.jpg`, `.jpeg`, `.png`, `.webp` (up to 20 MB) with dimension and corruption checks.
+- **Dynamic Taxonomy**: Runtime resolution of `model.names ∩ active_classes`. Transparently warns when `auto_rickshaw` is missing in stock COCO weights.
+- **Streamlit Integration**: Dual-mode navigation in `dashboard/app.py` preserving continuous video operations while adding single-frame inspection, KPI cards, class chart, detection table, and JPG/CSV/JSON exports.
+- **Privacy & Physical Boundaries**: 100% local processing; zero PII; zero external cloud transmission; strictly guarantees zero fabricated speed, acceleration, or emission values from still photographs.
+- **Status**: 72/72 tests passing (`pytest -q`). Full regression and unit coverage in `tests/test_image_intelligence.py`.
+
