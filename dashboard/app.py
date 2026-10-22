@@ -15,10 +15,24 @@ import pyarrow.parquet as pq
 import streamlit as st
 import yaml
 
+from perception.image_inference import (
+    ImageValidationError,
+    TrafficImageAnalyzer,
+    encode_image_to_bytes,
+    export_results_to_csv,
+    export_results_to_json,
+)
+
 # Ensure project root is in sys.path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
+
+
+@st.cache_resource
+def get_image_analyzer() -> TrafficImageAnalyzer:
+    """Cache analyzer instance to avoid repeated YOLO model loading across reruns."""
+    return TrafficImageAnalyzer()
 
 # Page configuration
 st.set_page_config(
@@ -229,9 +243,7 @@ def count_stop_events(df: pd.DataFrame, min_frames: int = 30) -> int:
 # -------------------------------------------------------------
 # MAIN APP
 # -------------------------------------------------------------
-def main() -> None:
-    artifacts_dir = REPO_ROOT / "artifacts"
-
+def render_video_operations(artifacts_dir: Path) -> None:
     # SECTION A: HEADER
     st.title("Eco-Kinetic Traffic Carbon Digital Twin")
     st.caption("Existing CCTV fleet → carbon intelligence; no new hardware, no video leaves the junction.")
@@ -476,6 +488,218 @@ def main() -> None:
                 - Stop events gate tracks at $\ge 15$ frames to avoid tracking churn bias.
                 """
             )
+
+
+def render_image_intelligence(artifacts_dir: Path) -> None:
+    """Render the Image Intelligence view for single-frame photograph inspection."""
+    st.title("Traffic Image Intelligence")
+    st.caption("Single-frame intersection vehicle perception • Local CPU inference • Privacy-preserving (Zero PII, no ANPR, no video egress).")
+    st.divider()
+
+    analyzer = get_image_analyzer()
+
+    # Informative limitation notice if auto_rickshaw is unsupported in current weights
+    if analyzer.limitation_notes:
+        st.info(f"ℹ️ **Model Taxonomy Note:** {analyzer.limitation_notes}")
+
+    # Top Controls
+    col_up, col_ctrl = st.columns([1.4, 1.0])
+    with col_up:
+        uploaded_file = st.file_uploader(
+            "Upload Traffic Intersection Photograph",
+            type=["jpg", "jpeg", "png", "webp"],
+            help="Upload a standard traffic photograph (JPG, JPEG, PNG, or WebP, max 20 MB). Processed strictly locally on CPU.",
+        )
+    with col_ctrl:
+        conf_thresh = st.slider(
+            "Confidence Threshold",
+            min_value=0.05,
+            max_value=0.95,
+            value=0.30,
+            step=0.05,
+            help="Minimum model confidence required to keep a vehicle detection.",
+        )
+        process_btn = st.button("🔍 Process Image", type="primary", use_container_width=True)
+
+    if uploaded_file is None:
+        st.info("👆 Please upload a traffic photograph (JPG, JPEG, PNG, or WebP) to begin image analysis.")
+
+        with st.sidebar:
+            st.subheader("Image Engine Configuration")
+            st.write(f"**Model Weights**: `{analyzer.model_name}`")
+            st.write(f"**Inference Device**: `{analyzer.device.upper()}`")
+            st.write(f"**Supported Classes**: {', '.join(analyzer.supported_classes)}")
+            if analyzer.unsupported_classes:
+                st.caption(f"⚠️ Unsupported in weights: {', '.join(analyzer.unsupported_classes)}")
+            st.write("**Privacy Guarantee**:")
+            st.caption("Zero cloud transmission. No facial or license-plate extraction. Fully local edge execution.")
+        return
+
+    # Cache state to avoid re-processing on unrelated reruns
+    file_bytes = uploaded_file.getvalue()
+    file_key = f"{uploaded_file.name}_{len(file_bytes)}_{conf_thresh:.2f}"
+
+    should_process = process_btn or ("img_result" not in st.session_state or st.session_state.get("img_key") != file_key)
+
+    if should_process:
+        with st.spinner("Analyzing traffic photograph on CPU..."):
+            try:
+                result = analyzer.analyze(file_bytes, conf=conf_thresh)
+                st.session_state["img_result"] = result
+                st.session_state["img_key"] = file_key
+                st.session_state["img_filename"] = uploaded_file.name
+            except ImageValidationError as e:
+                st.error(f"Image Validation Error: {e}")
+                return
+            except Exception as e:
+                st.error(f"Inference Failure: {e}")
+                return
+
+    result = st.session_state.get("img_result")
+    if not result:
+        return
+
+    # Visual Inspection (Side-by-side)
+    col_orig, col_annot = st.columns(2)
+    with col_orig:
+        st.subheader("Original Photograph")
+        st.image(result["original_image"], use_container_width=True)
+    with col_annot:
+        st.subheader("Perception Annotations")
+        st.image(result["annotated_image"], use_container_width=True)
+
+    st.divider()
+
+    # Metric Cards
+    k1, k2, k3, k4, k5 = st.columns(5)
+    with k1:
+        st.metric("Total Vehicles", f"{result['total_detections']}")
+    with k2:
+        st.metric("Classes Detected", f"{result['classes_detected_count']} / {len(result['supported_classes'])}")
+    with k3:
+        st.metric("Mean Confidence", f"{result['mean_confidence'] * 100:.1f}%" if result['total_detections'] > 0 else "—")
+    with k4:
+        st.metric("Inference Latency", f"{result['processing_latency_ms']:.0f} ms")
+    with k5:
+        st.metric("Engine & Device", f"{result['model_identifier']} ({result['device'].upper()})")
+
+    st.write("")
+
+    # Class Breakdown & Distribution
+    col_chart, col_empty = st.columns([1.2, 1.0])
+    with col_chart:
+        st.subheader("Detected Vehicle Class Distribution")
+        counts_df = pd.DataFrame(
+            list(result["per_class_counts"].items()),
+            columns=["Vehicle Class", "Count"],
+        )
+        st.bar_chart(counts_df.set_index("Vehicle Class"))
+
+    # Empty State Handling
+    if result["total_detections"] == 0:
+        st.warning(
+            f"No vehicles were detected above confidence threshold {conf_thresh:.2f}. "
+            "Try lowering the confidence threshold slider or upload an alternative angle."
+        )
+
+    # Detailed Detections Table
+    st.subheader("Vehicle Detection Ledger")
+    records = result.get("detection_records", [])
+    if records:
+        table_rows = []
+        for r in records:
+            bbox = r["bbox"]
+            table_rows.append({
+                "Index": r["detection_index"],
+                "Class": r["class_name"],
+                "Confidence": f"{r['confidence']:.4f}",
+                "Bounding Box [x1, y1, x2, y2]": f"[{bbox[0]:.1f}, {bbox[1]:.1f}, {bbox[2]:.1f}, {bbox[3]:.1f}]",
+                "Width (px)": r["bbox_w_px"],
+                "Height (px)": r["bbox_h_px"],
+                "Area (px²)": r["bbox_area_px"],
+            })
+        st.dataframe(pd.DataFrame(table_rows), use_container_width=True)
+    else:
+        st.info("No vehicle detection records to display.")
+
+    st.divider()
+
+    # Downloads Section
+    st.subheader("Export Results")
+    down_col1, down_col2, down_col3 = st.columns(3)
+    base_name = Path(st.session_state.get("img_filename", "traffic")).stem
+
+    with down_col1:
+        img_bytes = encode_image_to_bytes(result["annotated_image"], format="jpg")
+        st.download_button(
+            "📥 Download Annotated Image",
+            data=img_bytes,
+            file_name=f"{base_name}_annotated.jpg",
+            mime="image/jpeg",
+            use_container_width=True,
+        )
+    with down_col2:
+        csv_data = export_results_to_csv(result)
+        st.download_button(
+            "📊 Download Results (CSV)",
+            data=csv_data,
+            file_name=f"{base_name}_detections.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+    with down_col3:
+        json_data = export_results_to_json(result)
+        st.download_button(
+            "📋 Download Results (JSON)",
+            data=json_data,
+            file_name=f"{base_name}_results.json",
+            mime="application/json",
+            use_container_width=True,
+        )
+
+    # Methodology & Boundaries Expander (Phase D requirements)
+    with st.expander("ℹ️ Kinematics & Carbon Boundary Notice", expanded=False):
+        st.markdown(
+            r"""
+            **Single-Photograph Perception Boundaries:**
+            - **Observed Image Detections:** The results above represent an instantaneous spatial snapshot of the intersection.
+            - **No Kinematic Extrapolation:** Vehicle speed, acceleration, deceleration, and idling durations cannot be measured reliably from a single static image. Consequently, **no speeds, motion states, or cumulative tailpipe emissions are fabricated or reported**.
+            - **Video Digital Twin:** Dynamic mode-bin carbon accumulation ($E_{\text{vehicle}} = \sum r_{\text{mode}} \cdot \Delta t$) and ATCS signal directives are exclusively generated from multi-frame video tracking in **Junction Video Operations** mode.
+            - **Privacy Guarantee:** Uploaded images are processed entirely in local CPU volatile memory. No facial recognition, license plate recognition (ANPR), or external cloud API transmissions occur.
+            """
+        )
+
+    # Sidebar info for image mode
+    with st.sidebar:
+        st.subheader("Image Engine Configuration")
+        st.write(f"**Model Weights**: `{analyzer.model_name}`")
+        st.write(f"**Inference Device**: `{analyzer.device.upper()}`")
+        st.write(f"**Supported Classes**: {', '.join(analyzer.supported_classes)}")
+        if analyzer.unsupported_classes:
+            st.caption(f"⚠️ Unsupported in weights: {', '.join(analyzer.unsupported_classes)}")
+        st.write("**Privacy Guarantee**:")
+        st.caption("Zero cloud transmission. No facial or license-plate extraction. Fully local edge execution.")
+
+
+def main() -> None:
+    artifacts_dir = REPO_ROOT / "artifacts"
+
+    st.sidebar.title("🌿 Eco-Kinetic Console")
+    mode = st.sidebar.radio(
+        "Navigation Mode",
+        [
+            "Junction Video Operations",
+            "Image Intelligence",
+        ],
+        index=0,
+        help="Switch between continuous CCTV video digital twin and single-frame photograph intelligence.",
+    )
+    st.sidebar.divider()
+
+    if mode == "Junction Video Operations":
+        render_video_operations(artifacts_dir)
+    else:
+        render_image_intelligence(artifacts_dir)
 
 
 if __name__ == "__main__":

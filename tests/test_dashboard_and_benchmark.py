@@ -60,6 +60,21 @@ def test_dashboard_app_renders_safely():
     assert "Eco-Kinetic" in at.title[0].value
 
 
+def test_dashboard_image_intelligence_mode_renders_safely():
+    """Verify Image Intelligence mode in Streamlit dashboard renders cleanly."""
+    at = AppTest.from_file(str(REPO_ROOT / "dashboard" / "app.py"))
+    at.run(timeout=10)
+    assert not at.exception
+    # Select Image Intelligence mode in sidebar
+    radios = at.sidebar.radio
+    assert len(radios) > 0
+    radios[0].set_value("Image Intelligence")
+    at.run(timeout=10)
+    assert not at.exception
+    assert len(at.title) > 0
+    assert "Image Intelligence" in at.title[0].value
+
+
 def test_dashboard_app_resilient_to_missing_artifacts(tmp_path: Path):
     """Verify Streamlit dashboard runs cleanly even if artifacts dir is missing."""
     artifacts_dir = REPO_ROOT / "artifacts"
