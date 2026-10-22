@@ -47,10 +47,26 @@ def get_sample_image_path() -> Path:
     return Path("bus.jpg")
 
 
+_MODEL_CACHE: Dict[str, YOLO] = {}
+
+
+def get_cached_yolo_model(model_name_or_path: Union[str, Path]) -> YOLO:
+    """Retrieve or cache a YOLO model instance to prevent redundant weight reloads."""
+    key = str(model_name_or_path)
+    if key not in _MODEL_CACHE:
+        _MODEL_CACHE[key] = YOLO(key)
+    return _MODEL_CACHE[key]
+
+
+def clear_model_cache() -> None:
+    """Clear cached YOLO model instances."""
+    _MODEL_CACHE.clear()
+
+
 class Detector:
     VEHICLE_COCO_IDS: Dict[int, str] = VEHICLE_COCO_IDS
 
-    def __init__(self, config_path: Optional[Union[str, Path]] = None) -> None:
+    def __init__(self, config_path: Optional[Union[str, Path]] = None, model: Optional[YOLO] = None) -> None:
         self.config_path = Path(config_path) if config_path else get_default_config_path()
         if not self.config_path.exists():
             raise FileNotFoundError(f"Configuration file not found: {self.config_path}")
@@ -59,11 +75,15 @@ class Detector:
             self.config: Dict[str, Any] = yaml.safe_load(f)
 
         self.model_name: str = self.config.get("model", "yolo26n.pt")
+        self.device: str = str(self.config.get("device", "cpu"))
         self.imgsz: int = int(self.config.get("imgsz", 640))
         self.confidence: float = float(self.config.get("confidence", 0.30))
 
-        # Initialize YOLO model
-        self.model = YOLO(self.model_name)
+        # Initialize or reuse YOLO model
+        if model is not None:
+            self.model = model
+        else:
+            self.model = get_cached_yolo_model(self.model_name)
 
     def detect(
         self,
@@ -71,15 +91,18 @@ class Detector:
         conf: Optional[float] = None,
         imgsz: Optional[int] = None,
         classes: Optional[List[int]] = None,
+        device: Optional[str] = None,
     ) -> Any:
         """Run object detection on the provided source."""
         target_conf = conf if conf is not None else self.confidence
         target_imgsz = imgsz if imgsz is not None else self.imgsz
+        target_device = device if device is not None else self.device
         return self.model(
             source,
             conf=target_conf,
             imgsz=target_imgsz,
             classes=classes,
+            device=target_device,
             verbose=False,
         )
 

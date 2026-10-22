@@ -6,6 +6,8 @@ import numpy as np
 from ultralytics import YOLO
 import yaml
 
+from perception.detector import get_cached_yolo_model
+
 
 def get_default_config_path() -> Path:
     return Path(__file__).resolve().parent.parent / "config" / "app.yaml"
@@ -37,7 +39,7 @@ class Tracker:
         if model is not None:
             self.model = model
         else:
-            self.model = YOLO(self.model_path)
+            self.model = get_cached_yolo_model(self.model_path)
 
         # Critical design rule:
         # Class IDs are NEVER hardcoded. Resolve at startup:
