@@ -185,6 +185,8 @@ This project retrofits existing municipal CCTV traffic camera fleets into a real
 - **Operator Directive Feed:** Compact directive cards with mode/status pills, savings/confidence, **Dispatch** and **Dismiss** actions, mode filters, and a collapsed archive for older records.
 - **What-If Lab:** Reset-to-baseline callback, scenario KPI band, per-class avoided-CO₂ chart, audit table, and CSV export.
 - **Image Intelligence Polish:** Preset gallery, clear-result action, advisory publish-to-log action, advisory JSON export, and compact hero status chips.
+- **Image Sidebar (Lean):** Deduplicated the engine sidebar into a compact status card, collapsible model/taxonomy details, active-image summary, and two unique actions — **↻ Re-run analysis** and **♻ Reload weights**. Preset loading, clearing, publishing, and exports live only in the main panel to avoid duplicate controls.
+- **Upload & Accuracy Verification:** Exercised the real browser upload path on bundled samples. Moving auto-rickshaw: 5 detections (3 cars + 2 auto-rickshaws, mean confidence 0.85). Parked service auto: 7 detections (4 cars + 1 auto + 2 motorcycles, mean 0.80). Both match the frames. The out-of-domain Delhi aerial image was removed from the presets after heavy under-detection and misclassification (3 low-confidence cars on a dense top-down 1920×1080 scene); the file remains on disk for limitation testing.
 - **Verification:** All 73 tests pass; visually validated in headless Chrome at 1600px width.
 
 
@@ -192,13 +194,10 @@ This project retrofits existing municipal CCTV traffic camera fleets into a real
 
 ## 3. What HAS TO BE DONE (Pending Tasks & Open Gaps)
 
-### 🟢 Priority 1: Milestone M8 — Demo Video Recording & Git Release Freeze
-- **Demo Backup Video:** Record a 2–3 minute video recording (`artifacts/demo_backup.mp4`) demonstrating:
-  - Dashboard overview and live metric cards.
-  - Video overlay playback with dynamic state tracking.
-  - What-If counterfactual scenario slider adjustments showing live carbon abatement.
-  - Real-time municipal dispatcher directive stream with both LLM and fallback badges.
-- **Git Tag:** Create tag `demo-v1` at freeze hour.
+### ✅ Priority 1: Milestone M8 — Demo Video Recording & Git Release Freeze [COMPLETE]
+- **Demo Backup Video:** `artifacts/demo_backup.mp4` — 120.5s, 1600×1000 H.264 at 2 fps, recorded end-to-end from the final UI (video operations KPIs, live advisory generation, choke heatmap, operator dispatch, What-If lab, and Image Intelligence preset).
+- **Git Tag:** `demo-v1`.
+- **Upload Path & Preset Accuracy:** Verified the real browser upload flow on bundled samples. Moving auto-rickshaw: 5 detections (3 cars + 2 auto-rickshaws; mean confidence 0.85). Parked service auto: 7 detections (4 cars + 1 auto + 2 motorcycles; mean 0.80) — both visually correct. The Delhi aerial sample was removed from the preset gallery after producing heavy under-detection/misclassification on a dense top-down scene (3 low-confidence cars); the image file is retained on disk for limitation testing.
 
 ---
 
@@ -251,7 +250,7 @@ When handing off this project to another LLM, enforce the following non-negotiab
 | `artifacts/events.jsonl` | Complete | Extracted corridor tracking and stop events |
 | `artifacts/directives_mock.jsonl` | Complete | 10 diverse mock directives for frontend contract |
 | `artifacts/directives.jsonl` | Complete | Append-only municipal directives log with fallback entries |
-| `artifacts/demo_backup.mp4` | **Pending** | 2-3 minute backup video recording |
+| `artifacts/demo_backup.mp4` | Complete | 120.5s, 1600×1000 H.264 demo recording of the full user flow |
 | `dashboard-web/public/junction.mp4` | Complete | Active raw CCTV video stream (auto-synced) |
 | `dashboard-web/public/overlay.mp4` | Complete | H.264 fast-start AI overlay video feed (auto-synced from render_overlay.py) |
 | `scripts/swap_video.py` | Complete | CLI utility to swap CCTV video, transcode H.264, and refresh web assets |

@@ -96,6 +96,7 @@ M7 — Perf, deployment story, docs (29–33h) [COMPLETE]
 M8 — Demo freeze (33–34h, HARD STOP)
 
     Record artifacts/demo_backup.mp4 (2–3 min full flow). Tag demo-v1. After this:bug fixes only.
+    Status: COMPLETE. `artifacts/demo_backup.mp4` recorded from the final UI (120.5s, 1600×1000 H.264); tag `demo-v1` created.
 
 34–36h — Buffer. Dry runs only.
 8. Fallbacks (apply only with user approval)
@@ -133,6 +134,8 @@ Multi-camera fusion, RTSP ingestion (mention as thin adapter in docs only),homog
 - **Directive Feed**: Mode/status pills, Dispatch/Dismiss operator actions, mode filter, collapsed archive.
 - **What-If Lab**: Reset callback, scenario KPI band, avoided-CO₂ class chart, audit CSV export.
 - **Image Mode**: Preset gallery, clear-result action, advisory publish-to-log, advisory JSON export.
+- **Image Sidebar**: Compact engine status, collapsible taxonomy, active-image summary, plus unique **Re-run analysis** / **Reload weights** actions. Removed duplicate preset/clear/publish/export controls from the sidebar.
+- **Upload Validation**: Real browser uploads verified on two in-domain CCTV presets (5 detections @ 0.85 mean confidence; 7 detections @ 0.80). The out-of-domain Delhi aerial preset was removed after under-detection (3 low-confidence cars on a dense top-down scene).
 - **Verification**: 73/73 tests pass; visually validated with headless Chrome at 1600px.
 
 

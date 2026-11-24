@@ -1698,6 +1698,94 @@ def render_video_operations(artifacts_dir: Path) -> None:
             )
 
 
+def _format_file_size(num_bytes: int) -> str:
+    """Human-readable byte size for the sidebar image summary."""
+    if num_bytes >= 1_048_576:
+        return f"{num_bytes / 1_048_576:.1f} MB"
+    return f"{max(1, num_bytes // 1024)} KB"
+
+
+def render_image_sidebar(analyzer: TrafficImageAnalyzer, artifacts_dir: Path) -> None:
+    """Compact sidebar engine console: status, taxonomy, and unique quick actions."""
+    supported = list(analyzer.supported_classes)
+    has_image = "active_img_bytes" in st.session_state
+    result = st.session_state.get("img_result")
+    has_result = bool(result)
+
+    with st.sidebar:
+        st.markdown("<p class='nav-section-title'>IMAGE ENGINE</p>", unsafe_allow_html=True)
+        _html(
+            f"""
+            <div class="nav-active-status-card">
+                <div class="active-badge-tag">● ENGINE ONLINE</div>
+                <div class="active-title-text">{Path(analyzer.model_name).name}</div>
+                <div class="active-desc-text">{analyzer.device.upper()} inference · {len(supported)} classes · zero cloud · no PII</div>
+            </div>
+            """
+        )
+        if st.session_state.get("engine_reloaded"):
+            st.caption("✓ Weights reloaded in this session.")
+
+        with st.expander("Model & taxonomy", expanded=False):
+            st.markdown(f"**Weights** `{analyzer.model_name}`")
+            st.markdown(f"**Device** `{analyzer.device.upper()}`")
+            st.markdown("**Supported classes**")
+            _html(
+                '<div class="chip-row">'
+                + "".join(f'<span class="chip">{c}</span>' for c in supported)
+                + "</div>"
+            )
+            if analyzer.unsupported_classes:
+                st.warning("Unavailable in current weights: " + ", ".join(analyzer.unsupported_classes))
+            st.caption(
+                "Uploads are processed in volatile local memory. No cloud transmission, "
+                "facial recognition, or license-plate extraction."
+            )
+
+        st.markdown("<p class='nav-section-title'>ACTIVE IMAGE</p>", unsafe_allow_html=True)
+        if has_image:
+            name = st.session_state.get("active_img_name", "traffic_photo.jpg")
+            size = _format_file_size(len(st.session_state["active_img_bytes"]))
+            source = st.session_state.get("img_source_type", "uploaded")
+            meta = f"{size} · {source}"
+            if has_result:
+                meta += f" · {result.get('total_detections', 0)} detections"
+            _html(
+                f"""
+                <div class="feed-card" style="--edge:#38bdf8;padding:10px 12px;">
+                    <div style="font-size:12px;font-weight:600;color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{name}</div>
+                    <div style="font-size:10.5px;color:#7d8ea3;margin-top:3px;">{meta}</div>
+                </div>
+                """
+            )
+        else:
+            _html(
+                '<div class="empty-state" style="padding:10px 12px;font-size:11px;">'
+                "No image loaded. Choose a preset or upload a photograph in the main panel.</div>"
+            )
+
+        st.markdown("<p class='nav-section-title'>ENGINE ACTIONS</p>", unsafe_allow_html=True)
+        if st.button(
+            "↻ Re-run analysis",
+            key="btn_sb_rerun",
+            use_container_width=True,
+            disabled=not has_image,
+            help="Recompute perception and the advisory with the current threshold.",
+        ):
+            st.session_state["img_key"] = ""
+            st.rerun()
+        if st.button(
+            "♻ Reload weights",
+            key="btn_sb_reload",
+            use_container_width=True,
+            help="Clear the cached YOLO weights and reload them from disk.",
+        ):
+            get_image_analyzer.clear()
+            st.cache_data.clear()
+            st.session_state["engine_reloaded"] = True
+            st.rerun()
+
+
 def render_image_intelligence(artifacts_dir: Path) -> None:
     """Render the Image Intelligence view for single-frame photograph inspection."""
     st.title("Traffic Image Intelligence")
@@ -1736,16 +1824,11 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
             "file": sample_dir / "sample_junction_parked_auto.jpg",
             "desc": "Right-hand service lane with parked auto & active mixed flow",
         },
-        "delhi_traffic": {
-            "name": "🚦 Delhi Congested Intersection",
-            "file": sample_dir / "sample_delhi_traffic.jpg",
-            "desc": "Multi-lane dense urban intersection queue",
-        },
     }
 
     st.markdown("##### ⚡ Quick test presets")
     st.caption("Instant local samples — no upload required. Each preset runs real inference on the bundled CCTV photography.")
-    p_col1, p_col2, p_col3 = st.columns(3)
+    p_col1, p_col2 = st.columns(2)
     preset_selected = None
 
     with p_col1:
@@ -1754,9 +1837,6 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
     with p_col2:
         if st.button(preset_samples["parked_auto"]["name"], use_container_width=True, help=preset_samples["parked_auto"]["desc"]):
             preset_selected = "parked_auto"
-    with p_col3:
-        if st.button(preset_samples["delhi_traffic"]["name"], use_container_width=True, help=preset_samples["delhi_traffic"]["desc"]):
-            preset_selected = "delhi_traffic"
 
     if preset_selected:
         p_info = preset_samples[preset_selected]
@@ -1815,16 +1895,7 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
     # Empty State Check
     if "active_img_bytes" not in st.session_state:
         st.info("👆 Click any 1-Click Test Preset above or upload a photograph to start vehicle perception & AI advisory.")
-
-        with st.sidebar:
-            st.subheader("Image Engine Configuration")
-            st.write(f"**Model Weights**: `{analyzer.model_name}`")
-            st.write(f"**Inference Device**: `{analyzer.device.upper()}`")
-            st.write(f"**Supported Classes**: {', '.join(analyzer.supported_classes)}")
-            if analyzer.unsupported_classes:
-                st.caption(f"⚠️ Unsupported in weights: {', '.join(analyzer.unsupported_classes)}")
-            st.write("**Privacy Guarantee**:")
-            st.caption("Zero cloud transmission. No facial or license-plate extraction. Fully local edge execution.")
+        render_image_sidebar(analyzer, artifacts_dir)
         return
 
     # Trigger Inference and Advisory
@@ -2106,12 +2177,23 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
 
         pub_col1, pub_col2, _pub_space = st.columns([0.24, 0.2, 0.56])
         with pub_col1:
-            if st.button("📡 Publish advisory to directive log", key="btn_publish_image_advisory", use_container_width=True, type="primary"):
+            pub_directive_id = str(directive.get("directive_id", "") or "")
+            published = st.session_state.setdefault("published_advisories", [])
+            pub_already = bool(pub_directive_id) and pub_directive_id in published
+            if st.button(
+                "✓ Advisory published" if pub_already else "📡 Publish advisory to directive log",
+                key="btn_publish_image_advisory",
+                use_container_width=True,
+                type="primary",
+                disabled=pub_already,
+            ):
                 try:
                     append_directive_to_log(
                         Directive(**directive),
                         artifacts_dir / "directives.jsonl",
                     )
+                    if pub_directive_id and pub_directive_id not in published:
+                        published.append(pub_directive_id)
                     st.cache_data.clear()
                     st.success("Advisory published to the municipal directive stream.")
                 except Exception as exc:
@@ -2293,16 +2375,8 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
             """
         )
 
-    # Sidebar info for image mode
-    with st.sidebar:
-        st.subheader("Image Engine Configuration")
-        st.write(f"**Model Weights**: `{analyzer.model_name}`")
-        st.write(f"**Inference Device**: `{analyzer.device.upper()}`")
-        st.write(f"**Supported Classes**: {', '.join(analyzer.supported_classes)}")
-        if analyzer.unsupported_classes:
-            st.caption(f"⚠️ Unsupported in weights: {', '.join(analyzer.unsupported_classes)}")
-        st.write("**Privacy Guarantee**:")
-        st.caption("Zero cloud transmission. No facial or license-plate extraction. Fully local edge execution.")
+    # Sidebar image-engine console with quick actions
+    render_image_sidebar(analyzer, artifacts_dir)
 
 
 def main() -> None:
@@ -2338,15 +2412,6 @@ def main() -> None:
             '<div class="active-badge-tag">● ACTIVE VIEWPORT</div>'
             '<div class="active-title-text">🎥 Junction Video Operations</div>'
             '<div class="active-desc-text">Continuous CCTV twin, spatial choke zones & counterfactual simulation.</div>'
-            "</div>",
-            unsafe_allow_html=True,
-        )
-    else:
-        st.sidebar.markdown(
-            '<div class="nav-active-status-card">'
-            '<div class="active-badge-tag">● ACTIVE VIEWPORT</div>'
-            '<div class="active-title-text">🚦 Traffic Image Intelligence</div>'
-            '<div class="active-desc-text">5-class edge perception with CPCB carbon accounting & GenAI advisory.</div>'
             "</div>",
             unsafe_allow_html=True,
         )

@@ -15,3 +15,6 @@ Log of architectural choices, deviations, and judgment calls during development.
 - Fixed a Streamlit widget-state bug in the What-If reset by moving state mutation into an `on_click` callback so it executes before widget instantiation.
 - Verified all 73 tests pass after the UI refresh and visually validated both console modes in headless Chrome.
 
+- Trimmed the Image Intelligence sidebar to remove duplicated controls (presets, clear, publish, downloads) that already exist in the main panel, leaving a compact engine status, taxonomy expander, active-image summary, and unique Re-run/Reload actions.
+- Validated the real upload path through browser file inputs on the bundled CCTV presets; removed the out-of-domain Delhi aerial image from the preset gallery after it produced under-detection and car/auto misclassification, while retaining the file for limitation testing.
+- Recorded the final M8 demo (`artifacts/demo_backup.mp4`, 120.5s) from the finished UI and tagged the release `demo-v1`.

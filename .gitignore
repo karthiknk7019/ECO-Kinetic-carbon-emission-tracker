@@ -30,3 +30,6 @@ venv/
 *.onnx
 IDD_FGVD/
 ab_autos.png
+
+# Generated local video asset (not referenced by the web app; overlay is drawn in JS)
+dashboard-web/public/overlay.mp4

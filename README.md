@@ -120,12 +120,13 @@ Open `http://localhost:8501` in your browser. The redesigned operations console 
 Users can analyze stationary intersection photographs without requiring the continuous video pipeline:
 - **Workflow**:
   1. Select **Image Intelligence** in the sidebar.
-  2. Click a **1-click CCTV preset** (moving auto-rickshaw, parked service auto, or Delhi congestion), or upload a custom photograph (`.jpg`, `.jpeg`, `.png`, or `.webp`, max 20 MB).
+  2. Click a **1-click CCTV preset** (moving auto-rickshaw or parked service auto), or upload a custom photograph (`.jpg`, `.jpeg`, `.png`, or `.webp`, max 20 MB).
   3. Adjust the detection confidence threshold (default: `0.25`).
   4. Click **Process image & generate advisory** to run CPU-only YOLO inference and the deterministic dispatcher.
   5. Inspect annotated bounding boxes, fleet KPIs, the carbon advisory, spatial approach quadrants, and the per-class CPCB index.
   6. Download the annotated image, detection ledger CSV, full JSON intelligence, or the advisory JSON.
   7. Optionally click **Publish advisory to directive log** to append it to `artifacts/directives.jsonl`.
+  8. Use the sidebar **↻ Re-run analysis** action to repeat inference at the current threshold, or **♻ Reload weights** to clear cached YOLO weights and reload them from disk.
 - **Model Taxonomy & Class Support**:
   - Configured in `config/app.yaml` (`models/finetuned/best.pt` on CPU). Dynamically resolves `model.names ∩ active_classes`.
   - The shipped 5-class Indian-road model supports `car`, `motorcycle`, `auto_rickshaw`, `bus`, and `truck`.
