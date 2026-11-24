@@ -97,11 +97,11 @@ st.markdown(
     /* Sidebar console brand card */
     .sidebar-console-card {
         background: linear-gradient(135deg, #0b1320 0%, #172545 50%, #0c201d 100%);
-        border: 1px solid #2563eb;
+        border: 1px solid rgba(52, 211, 153, 0.30);
         border-radius: 12px;
         padding: 16px;
         margin-bottom: 14px;
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
     }
     .console-status-row {
         display: flex;
@@ -167,6 +167,12 @@ st.markdown(
         padding: 12px;
         margin-top: 10px;
         margin-bottom: 12px;
+        transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+    .nav-active-status-card:hover {
+        transform: translateY(-1px);
+        border-color: rgba(52, 211, 153, 0.62);
+        box-shadow: 0 10px 24px rgba(16, 185, 129, 0.12);
     }
     .active-badge-tag {
         font-size: 10px;
@@ -649,6 +655,483 @@ st.markdown(
     @media (max-width: 1200px) {
         .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
+
+    /* ------------------------------------------------------------------
+       INTERACTION LAYER — motion, depth & tactile feedback
+       ------------------------------------------------------------------ */
+    ::selection { background: rgba(16, 185, 129, 0.35); color: #ffffff; }
+    html { scroll-behavior: smooth; }
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: #070a10; }
+    ::-webkit-scrollbar-thumb {
+        background: linear-gradient(180deg, #134e4a, #0f766e);
+        border-radius: 99px;
+        border: 2px solid #070a10;
+    }
+    ::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #10b981, #059669); }
+
+    .stApp {
+        background:
+            radial-gradient(1200px 700px at 12% -10%, rgba(16, 185, 129, 0.16), transparent 62%),
+            radial-gradient(1000px 600px at 95% 2%, rgba(56, 189, 248, 0.12), transparent 60%),
+            radial-gradient(900px 700px at 50% 112%, rgba(139, 92, 246, 0.10), transparent 62%),
+            #05070c;
+        background-size: 135% 135%;
+        animation: bgDrift 28s ease-in-out infinite alternate;
+    }
+    @keyframes bgDrift {
+        from { background-position: 0% 0%, 100% 0%, 50% 100%; }
+        to { background-position: 14% 10%, 86% 8%, 46% 92%; }
+    }
+
+    /* Hero container */
+    .st-key-hero {
+        position: relative;
+        overflow: hidden;
+        padding: 28px 32px 24px 32px !important;
+        border: 1px solid rgba(110, 231, 183, 0.20) !important;
+        border-radius: 24px !important;
+        background:
+            radial-gradient(620px 240px at 0% 0%, rgba(16, 185, 129, 0.20), transparent 70%),
+            radial-gradient(520px 280px at 100% 0%, rgba(56, 189, 248, 0.14), transparent 70%),
+            linear-gradient(135deg, rgba(13, 26, 32, 0.94), rgba(8, 12, 20, 0.94)) !important;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+        transition: border-color 0.35s ease, box-shadow 0.35s ease;
+        margin-bottom: 10px;
+    }
+    .st-key-hero > div { position: relative; z-index: 1; }
+    .st-key-hero::before {
+        content: "";
+        position: absolute;
+        inset: -45% -15% auto -15%;
+        height: 230%;
+        background: conic-gradient(from 180deg at 50% 50%,
+            transparent 0deg,
+            rgba(16, 185, 129, 0.10) 70deg,
+            transparent 140deg,
+            rgba(56, 189, 248, 0.08) 220deg,
+            transparent 300deg);
+        animation: heroGlow 20s linear infinite;
+        pointer-events: none;
+        z-index: 0;
+    }
+    .st-key-hero::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, #34d399, #38bdf8, transparent);
+        background-size: 200% 100%;
+        animation: scanLine 7s linear infinite;
+        pointer-events: none;
+        z-index: 2;
+    }
+    .st-key-hero:hover {
+        border-color: rgba(110, 231, 183, 0.38) !important;
+        box-shadow: 0 28px 70px rgba(0, 0, 0, 0.48), 0 0 48px rgba(16, 185, 129, 0.10) !important;
+    }
+    .st-key-hero { animation: heroIn 0.65s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+    @keyframes heroIn {
+        from { opacity: 0; transform: translateY(12px) scale(0.995); }
+        to { opacity: 1; transform: none; }
+    }
+    .st-key-hero h1 {
+        font-size: 2.55rem !important;
+        background: linear-gradient(94deg, #ffffff 0%, #d1fae5 40%, #6ee7b7 72%, #7dd3fc 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        filter: drop-shadow(0 8px 26px rgba(16, 185, 129, 0.18));
+    }
+    @supports not ((-webkit-background-clip: text) or (background-clip: text)) {
+        .st-key-hero h1 {
+            background: none;
+            color: #f8fafc;
+            -webkit-text-fill-color: #f8fafc;
+        }
+    }
+    .st-key-hero [data-testid="stCaptionContainer"] p {
+        font-size: 13.5px !important;
+        max-width: 920px;
+        color: #a9b7c9 !important;
+        line-height: 1.55;
+    }
+    @keyframes heroGlow {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    @keyframes scanLine {
+        from { background-position: 200% 0; }
+        to { background-position: -200% 0; }
+    }
+
+    /* Hero orbit visual */
+    .hero-visual {
+        position: absolute;
+        right: 54px;
+        top: 50%;
+        width: 168px;
+        height: 168px;
+        transform: translateY(-50%);
+        pointer-events: none;
+        opacity: 0.9;
+        z-index: 1;
+    }
+    .hero-ring {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 1px solid rgba(52, 211, 153, 0.16);
+    }
+    .ring-a {
+        border-top-color: rgba(52, 211, 153, 0.75);
+        border-right-color: rgba(56, 189, 248, 0.35);
+        animation: orbitSpin 26s linear infinite;
+    }
+    .ring-b {
+        inset: 24px;
+        border-bottom-color: rgba(56, 189, 248, 0.75);
+        border-left-color: rgba(52, 211, 153, 0.30);
+        animation: orbitSpin 16s linear infinite reverse;
+    }
+    .hero-core {
+        position: absolute;
+        inset: 60px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 35% 30%, rgba(16, 185, 129, 0.35), rgba(8, 16, 22, 0.92));
+        border: 1px solid rgba(52, 211, 153, 0.42);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 0 34px rgba(16, 185, 129, 0.26), inset 0 0 18px rgba(16, 185, 129, 0.20);
+    }
+    .hero-core-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #34d399;
+        box-shadow: 0 0 18px #34d399;
+        animation: corePulse 2.2s ease-in-out infinite;
+    }
+    @keyframes orbitSpin { to { transform: rotate(360deg); } }
+    @keyframes corePulse {
+        0%, 100% { transform: scale(0.85); opacity: 0.7; }
+        50% { transform: scale(1.15); opacity: 1; }
+    }
+    @media (max-width: 1250px) {
+        .hero-visual { display: none; }
+    }
+
+    /* Chips */
+    .chip {
+        transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        animation: fadeUp 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+    }
+    .chip:nth-child(2) { animation-delay: 0.05s; }
+    .chip:nth-child(3) { animation-delay: 0.10s; }
+    .chip:nth-child(4) { animation-delay: 0.15s; }
+    .chip:nth-child(5) { animation-delay: 0.20s; }
+    .chip:hover {
+        transform: translateY(-2px);
+        border-color: rgba(110, 231, 183, 0.5);
+        box-shadow: 0 10px 22px rgba(0, 0, 0, 0.4);
+    }
+    .chip-live .dot { animation: dotBreathe 2.4s ease-in-out infinite; }
+    @keyframes dotBreathe {
+        0%, 100% { box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12); }
+        50% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.04); }
+    }
+
+    /* Section headers */
+    .section-head {
+        position: relative;
+        padding-left: 15px;
+    }
+    .section-head::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 7px;
+        bottom: 7px;
+        width: 3px;
+        border-radius: 99px;
+        background: linear-gradient(180deg, #34d399, #38bdf8);
+        box-shadow: 0 0 16px rgba(52, 211, 153, 0.55);
+    }
+    .section-kicker { transition: letter-spacing 0.3s ease; }
+    .section-head:hover .section-kicker { letter-spacing: 0.19em; }
+
+    /* KPI cards */
+    .stat-card {
+        background:
+            radial-gradient(150px 90px at 100% 0%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 72%),
+            linear-gradient(160deg, rgba(22, 30, 46, 0.94), rgba(12, 17, 27, 0.94));
+        transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.28s ease, box-shadow 0.28s ease;
+        animation: fadeUp 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+    }
+    .stat-card:nth-child(1) { animation-delay: 0.02s; }
+    .stat-card:nth-child(2) { animation-delay: 0.07s; }
+    .stat-card:nth-child(3) { animation-delay: 0.12s; }
+    .stat-card:nth-child(4) { animation-delay: 0.17s; }
+    .stat-card:nth-child(5) { animation-delay: 0.22s; }
+    .stat-card::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -70%;
+        width: 45%;
+        height: 100%;
+        background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.07), transparent);
+        transform: skewX(-18deg);
+        transition: left 0.65s ease;
+        pointer-events: none;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+        border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+        box-shadow: 0 22px 46px rgba(0, 0, 0, 0.5), 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
+    }
+    .stat-card:hover::after { left: 130%; }
+    .stat-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 9px;
+        background: color-mix(in srgb, var(--accent) 16%, transparent);
+        color: var(--accent);
+        font-size: 13px;
+        margin-bottom: 9px;
+        transition: transform 0.25s ease, background 0.25s ease;
+    }
+    .stat-card:hover .stat-icon {
+        transform: translateY(-1px) scale(1.08);
+        background: color-mix(in srgb, var(--accent) 26%, transparent);
+    }
+    .stat-value {
+        font-variant-numeric: tabular-nums;
+        text-shadow: 0 0 26px color-mix(in srgb, var(--accent) 22%, transparent);
+    }
+    @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(16px); }
+        to { opacity: 1; transform: none; }
+    }
+
+    /* Buttons: shine sweep + depth */
+    .stButton > button::after,
+    .stDownloadButton > button::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -130%;
+        width: 60%;
+        height: 100%;
+        background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.30), transparent);
+        transform: skewX(-20deg);
+        transition: left 0.6s ease;
+        pointer-events: none;
+    }
+    .stButton > button:hover::after,
+    .stDownloadButton > button:hover::after { left: 140%; }
+    .stDownloadButton > button {
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.22s ease, border-color 0.22s ease, color 0.22s ease, box-shadow 0.22s ease;
+    }
+    .stDownloadButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 22px rgba(16, 185, 129, 0.22);
+    }
+    button:focus-visible,
+    [role="tab"]:focus-visible,
+    [role="slider"]:focus-visible {
+        outline: 2px solid #34d399 !important;
+        outline-offset: 2px !important;
+    }
+
+    /* Sidebar brand + navigation */
+    .sidebar-console-card {
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+    }
+    .sidebar-console-card::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(115deg, transparent 32%, rgba(255, 255, 255, 0.06), transparent 68%);
+        transform: translateX(-110%);
+        transition: transform 0.85s ease;
+        pointer-events: none;
+    }
+    .sidebar-console-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(52, 211, 153, 0.55);
+        box-shadow: 0 12px 34px rgba(37, 99, 235, 0.28), 0 0 38px rgba(16, 185, 129, 0.10);
+    }
+    .sidebar-console-card:hover::after { transform: translateX(110%); }
+    .stRadio [role="radiogroup"] label {
+        transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+        cursor: pointer;
+    }
+    .stRadio [role="radiogroup"] label:hover {
+        transform: translateX(3px);
+        border-color: rgba(52, 211, 153, 0.45);
+        background: rgba(16, 185, 129, 0.08);
+    }
+    .stRadio [role="radiogroup"] label:has(input:checked) {
+        border-color: rgba(52, 211, 153, 0.55);
+        background: linear-gradient(100deg, rgba(16, 185, 129, 0.16), rgba(56, 189, 248, 0.06));
+        box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.16), 0 10px 24px rgba(16, 185, 129, 0.12);
+    }
+    [data-testid="stSidebar"] .stRadio [role="radiogroup"] label:has(input:checked) p {
+        color: #ecfdf5;
+        font-weight: 600;
+    }
+
+    /* Image preset tiles */
+    .st-key-preset_moving_auto button,
+    .st-key-preset_parked_auto button {
+        background: linear-gradient(100deg, rgba(16, 185, 129, 0.12), rgba(56, 189, 248, 0.06)) !important;
+        border-color: rgba(52, 211, 153, 0.30) !important;
+        color: #d1fae5 !important;
+        min-height: 46px;
+        font-size: 13px !important;
+    }
+    .st-key-preset_moving_auto button:hover,
+    .st-key-preset_parked_auto button:hover {
+        border-color: rgba(52, 211, 153, 0.62) !important;
+        box-shadow: 0 12px 28px rgba(16, 185, 129, 0.22) !important;
+    }
+
+    /* Tabs */
+    .stTabs [data-baseweb="tab"] {
+        transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+    }
+    .stTabs [data-baseweb="tab"]:hover {
+        background: rgba(16, 185, 129, 0.08);
+        color: #d1fae5;
+        transform: translateY(-1px);
+    }
+    .stTabs [data-baseweb="tab-highlight"] {
+        background: linear-gradient(90deg, #10b981, #38bdf8) !important;
+        height: 3px !important;
+        border-radius: 99px;
+    }
+
+    /* Directive feed cards */
+    .feed-card {
+        transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+        animation: fadeUp 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+    }
+    .feed-card:hover {
+        transform: translateX(3px);
+        border-color: rgba(148, 163, 184, 0.32);
+        box-shadow: 0 16px 34px rgba(0, 0, 0, 0.4),
+            -3px 0 20px color-mix(in srgb, var(--edge) 22%, transparent);
+    }
+    .status-pending { animation: softPulse 2.6s ease-in-out infinite; }
+    @keyframes softPulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+        50% { box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.10); }
+    }
+
+    /* Media & widgets */
+    [data-testid="stImage"] img {
+        border-radius: 12px;
+        transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.4s ease;
+    }
+    [data-testid="stImage"] img:hover {
+        transform: scale(1.012);
+        box-shadow: 0 22px 54px rgba(0, 0, 0, 0.55);
+    }
+    [data-testid="stVideo"] {
+        border-radius: 14px;
+        box-shadow: 0 18px 44px rgba(0, 0, 0, 0.42);
+        transition: box-shadow 0.3s ease;
+    }
+    [data-testid="stVideo"]:hover {
+        box-shadow: 0 24px 58px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(52, 211, 153, 0.18);
+    }
+    [data-testid="stMetric"] {
+        transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+    [data-testid="stMetric"]:hover {
+        transform: translateY(-2px);
+        border-color: rgba(52, 211, 153, 0.30);
+        box-shadow: 0 16px 34px rgba(0, 0, 0, 0.36);
+    }
+    [data-testid="stDataFrame"] { transition: border-color 0.25s ease, box-shadow 0.25s ease; }
+    [data-testid="stDataFrame"]:hover {
+        border-color: rgba(52, 211, 153, 0.26);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.30);
+    }
+    [data-testid="stExpander"] {
+        transition: border-color 0.25s ease, background 0.25s ease;
+    }
+    [data-testid="stExpander"]:hover {
+        border-color: rgba(52, 211, 153, 0.28) !important;
+        background: rgba(13, 19, 30, 0.76);
+    }
+    [data-testid="stFileUploader"] section {
+        transition: border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
+    }
+    [data-testid="stFileUploader"] section:hover {
+        border-color: rgba(52, 211, 153, 0.55);
+        background: rgba(16, 185, 129, 0.05);
+        box-shadow: inset 0 0 34px rgba(16, 185, 129, 0.05);
+    }
+    [data-baseweb="slider"] [role="slider"] {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    [data-baseweb="slider"] [role="slider"]:hover {
+        transform: scale(1.14);
+        box-shadow: 0 0 0 8px rgba(16, 185, 129, 0.14);
+    }
+    [data-baseweb="input"], [data-baseweb="textarea"] {
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    [data-baseweb="input"]:focus-within, [data-baseweb="textarea"]:focus-within {
+        border-color: rgba(52, 211, 153, 0.55) !important;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12) !important;
+    }
+
+    /* Alerts & toasts */
+    [data-testid="stAlert"] {
+        border-radius: 12px !important;
+        border: 1px solid rgba(56, 189, 248, 0.22) !important;
+        animation: fadeUp 0.35s ease both;
+    }
+    [data-testid="stToast"] {
+        background: #0c1a17 !important;
+        border: 1px solid rgba(52, 211, 153, 0.35) !important;
+        border-radius: 12px !important;
+        box-shadow: 0 18px 42px rgba(0, 0, 0, 0.5) !important;
+        animation: toastIn 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    }
+    @keyframes toastIn {
+        from { opacity: 0; transform: translateY(12px) scale(0.98); }
+        to { opacity: 1; transform: none; }
+    }
+
+    /* Press feedback */
+    .stButton > button:active,
+    .stDownloadButton > button:active {
+        transform: translateY(0) scale(0.975) !important;
+        box-shadow: inset 0 3px 14px rgba(0, 0, 0, 0.45) !important;
+        transition-duration: 0.05s !important;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+            animation: none !important;
+            transition: none !important;
+            scroll-behavior: auto !important;
+        }
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -728,6 +1211,10 @@ def _base_figure(height: int = 250) -> go.Figure:
         font=dict(family="Inter, sans-serif", color="#94a3b8", size=11),
         showlegend=False,
         hoverlabel=dict(bgcolor="#111827", bordercolor="rgba(148,163,184,0.2)", font_color="#e5e7eb"),
+        hovermode="closest",
+        dragmode=False,
+        transition=dict(duration=420, easing="cubic-in-out"),
+        uirevision="eco-kinetic",
     )
     return fig
 
@@ -808,6 +1295,59 @@ def make_choke_heatmap(matrix: np.ndarray) -> go.Figure:
         xaxis=dict(side="bottom", tickfont=dict(size=10), showgrid=False, zeroline=False),
         yaxis=dict(autorange="reversed", tickfont=dict(size=10), showgrid=False, zeroline=False),
         margin=dict(l=8, r=8, t=8, b=8),
+    )
+    return fig
+
+
+def make_fleet_bar(class_counts: Dict[str, int]) -> go.Figure:
+    order = [c for c in ["car", "auto_rickshaw", "motorcycle", "bus", "truck"] if c in class_counts]
+    values = [int(class_counts[c]) for c in order]
+    fig = _base_figure(240)
+    fig.add_trace(
+        go.Bar(
+            x=order,
+            y=values,
+            marker=dict(color=[CLASS_COLORS.get(c, "#38bdf8") for c in order], line=dict(width=0)),
+            text=values,
+            textposition="outside",
+            textfont=dict(size=11, color="#e6ebf2"),
+            hovertemplate="<b>%{x}</b><br>%{y} vehicles<extra></extra>",
+            width=0.52,
+        )
+    )
+    fig.update_layout(
+        xaxis=dict(showgrid=False, tickfont=dict(size=10), zeroline=False),
+        yaxis=dict(showgrid=True, gridcolor="rgba(148,163,184,0.08)", zeroline=False, rangemode="tozero"),
+        margin=dict(l=8, r=8, t=20, b=8),
+        bargap=0.42,
+    )
+    return fig
+
+
+def make_approach_bar(quadrant_counts: Dict[str, int]) -> go.Figure:
+    labels = list(quadrant_counts.keys())
+    values = [int(v) for v in quadrant_counts.values()]
+    fig = _base_figure(230)
+    fig.add_trace(
+        go.Bar(
+            x=labels,
+            y=values,
+            marker=dict(
+                color=["#38bdf8", "#34d399", "#fbbf24", "#c084fc"][: len(labels)],
+                line=dict(width=0),
+            ),
+            text=values,
+            textposition="outside",
+            textfont=dict(size=11, color="#e6ebf2"),
+            hovertemplate="<b>%{x}</b><br>%{y} vehicles<extra></extra>",
+            width=0.5,
+        )
+    )
+    fig.update_layout(
+        xaxis=dict(showgrid=False, tickfont=dict(size=10), zeroline=False),
+        yaxis=dict(showgrid=True, gridcolor="rgba(148,163,184,0.08)", zeroline=False, rangemode="tozero"),
+        margin=dict(l=8, r=8, t=20, b=8),
+        bargap=0.45,
     )
     return fig
 
@@ -1167,21 +1707,27 @@ def render_video_operations(artifacts_dir: Path) -> None:
     dt_s = float(meta.get("dt_s", 0.08)) if meta else 0.08
 
     # SECTION A: HERO + STATUS
-    st.title("Eco-Kinetic Traffic Carbon Digital Twin")
-    st.caption(
-        "Retrofit intelligence for the existing CCTV fleet — vehicle kinematics become verified carbon "
-        "telemetry, and deterministic policy becomes municipal action. No new hardware. No video egress."
-    )
-    _html(
-        f"""
-        <div class="chip-row" style="margin-top:10px;">
-            <span class="chip chip-live"><span class="dot"></span>Edge node live · CPU only</span>
-            <span class="chip chip-blue">Zero-PII telemetry uplink</span>
-            <span class="chip">CPCB BS-VI factors</span>
-            <span class="chip chip-amber">{"Offline fixture preview" if is_fixture else "Live telemetry ledger"}</span>
-        </div>
-        """
-    )
+    with st.container(key="hero"):
+        st.title("Eco-Kinetic Traffic Carbon Digital Twin")
+        st.caption(
+            "Retrofit intelligence for the existing CCTV fleet — vehicle kinematics become verified carbon "
+            "telemetry, and deterministic policy becomes municipal action. No new hardware. No video egress."
+        )
+        _html(
+            f"""
+            <div class="chip-row" style="margin-top:10px;">
+                <span class="chip chip-live"><span class="dot"></span>Edge node live · CPU only</span>
+                <span class="chip chip-blue">Zero-PII telemetry uplink</span>
+                <span class="chip">CPCB BS-VI factors</span>
+                <span class="chip chip-amber">{"Offline fixture preview" if is_fixture else "Live telemetry ledger"}</span>
+            </div>
+            <div class="hero-visual" aria-hidden="true">
+                <div class="hero-ring ring-a"></div>
+                <div class="hero-ring ring-b"></div>
+                <div class="hero-core"><span class="hero-core-dot"></span></div>
+            </div>
+            """
+        )
     st.write("")
 
     if is_fixture:
@@ -1766,21 +2312,27 @@ def render_image_sidebar(analyzer: TrafficImageAnalyzer) -> None:
 
 def render_image_intelligence(artifacts_dir: Path) -> None:
     """Render the Image Intelligence view for single-frame photograph inspection."""
-    st.title("Traffic Image Intelligence")
-    st.caption(
-        "Upload one junction photograph — or load a curated CCTV sample — to inspect vehicle mix, "
-        "run deterministic CPCB carbon accounting, and generate a municipal advisory."
-    )
-    _html(
-        """
-        <div class="chip-row" style="margin-top:10px;">
-            <span class="chip chip-live"><span class="dot"></span>Local CPU inference</span>
-            <span class="chip chip-blue">5-class Indian road taxonomy</span>
-            <span class="chip">Zero cloud upload</span>
-            <span class="chip chip-amber">No fabricated kinematics</span>
-        </div>
-        """
-    )
+    with st.container(key="hero"):
+        st.title("Traffic Image Intelligence")
+        st.caption(
+            "Upload one junction photograph — or load a curated CCTV sample — to inspect vehicle mix, "
+            "run deterministic CPCB carbon accounting, and generate a municipal advisory."
+        )
+        _html(
+            """
+            <div class="chip-row" style="margin-top:10px;">
+                <span class="chip chip-live"><span class="dot"></span>Local CPU inference</span>
+                <span class="chip chip-blue">5-class Indian road taxonomy</span>
+                <span class="chip">Zero cloud upload</span>
+                <span class="chip chip-amber">No fabricated kinematics</span>
+            </div>
+            <div class="hero-visual" aria-hidden="true">
+                <div class="hero-ring ring-a"></div>
+                <div class="hero-ring ring-b"></div>
+                <div class="hero-core"><span class="hero-core-dot"></span></div>
+            </div>
+            """
+        )
     st.write("")
 
     analyzer = get_image_analyzer()
@@ -1810,10 +2362,20 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
     preset_selected = None
 
     with p_col1:
-        if st.button(preset_samples["moving_auto"]["name"], width="stretch", help=preset_samples["moving_auto"]["desc"]):
+        if st.button(
+            preset_samples["moving_auto"]["name"],
+            key="preset_moving_auto",
+            width="stretch",
+            help=preset_samples["moving_auto"]["desc"],
+        ):
             preset_selected = "moving_auto"
     with p_col2:
-        if st.button(preset_samples["parked_auto"]["name"], width="stretch", help=preset_samples["parked_auto"]["desc"]):
+        if st.button(
+            preset_samples["parked_auto"]["name"],
+            key="preset_parked_auto",
+            width="stretch",
+            help=preset_samples["parked_auto"]["desc"],
+        ):
             preset_selected = "parked_auto"
 
     if preset_selected:
@@ -2225,8 +2787,11 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
             with q_cols[i]:
                 pct = (quad_cnt / total_veh * 100.0) if total_veh > 0 else 0.0
                 st.metric(quad_name, f"{quad_cnt} veh", delta=f"{pct:.0f}% of total" if total_veh > 0 else None)
-        q_df = pd.DataFrame(list(q_counts.items()), columns=["Approach Zone", "Vehicle Count"])
-        st.bar_chart(q_df.set_index("Approach Zone"))
+        st.plotly_chart(
+            make_approach_bar(q_counts),
+            width="stretch",
+            config={"displayModeBar": False},
+        )
 
     st.divider()
 
@@ -2234,11 +2799,11 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
     col_chart, col_cpcb = st.columns([1.1, 1.3])
     with col_chart:
         st.subheader("Detected Fleet Taxonomy")
-        chart_data = pd.DataFrame(
-            list(result["per_class_counts"].items()),
-            columns=["Vehicle Class", "Count"],
+        st.plotly_chart(
+            make_fleet_bar(dict(result["per_class_counts"])),
+            width="stretch",
+            config={"displayModeBar": False},
         )
-        st.bar_chart(chart_data.set_index("Vehicle Class"))
 
     with col_cpcb:
         st.subheader("CPCB BS-VI Emission Index (Snapshot)")

@@ -114,6 +114,8 @@ Open `http://localhost:8501` in your browser. The redesigned operations console 
 - **Export telemetry** — download the active ledger as CSV.
 - **Generate advisory** — run the deterministic ATCS dispatcher against the current corridor window and append a new directive.
 
+**Interaction layer:** the console uses CSS-only motion — an animated backdrop, glass hero with a radar-orbit motif, staggered KPI entrance, hover lift/glow and sheen on cards, shine and press feedback on buttons, mint hover/selected states for nav and tabs, media zoom, focus glow on sliders and inputs, and smooth Plotly transitions. All motion is disabled automatically under `prefers-reduced-motion`.
+
 ### Step 5b: Traffic Image Intelligence (Single-Frame Analysis)
 
 Users can analyze stationary intersection photographs without requiring the continuous video pipeline:

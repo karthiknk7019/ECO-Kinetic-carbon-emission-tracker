@@ -186,6 +186,8 @@ This project retrofits existing municipal CCTV traffic camera fleets into a real
 - **Bug-Fix Pass:** Time-window Start/Midpoint/End jumps now use `on_click` callbacks (previously crashed with a Streamlit session-state error), advisory confirmations persist across reruns, stale image results are cleared when validation fails, and changing the optional API key no longer re-triggers inference.
 - **Declutter:** Removed the no-op What-If jump button, the misleading annualised-extrapolation card, the duplicate "Original Photograph" tab, the duplicate video-viewport sidebar card, and the technical video metadata strip (filename / size / codec). The choke-point table now auto-sizes instead of reserving empty rows, image identity hashes file bytes instead of filename/size, and the tracked-vehicle foot reads "telemetry span" to avoid implying the playback duration.
 - **Visual Analytics:** Plotly kinematic-state donut with observation counts and a custom 4×4 spatial choke heatmap, replacing generic Streamlit bar charts.
+- **Motion & Interaction Refresh:** Animated radial backdrop, glass hero with gradient headline and radar-orbit motif, staggered KPI entrance, hover lift/glow + sheen sweep on stat and directive cards, shine sweep and press feedback on buttons, mint hover/selected states for sidebar nav and tabs, image zoom on hover, slider/input focus glow, and Plotly transition animations. All motion is suppressed under `prefers-reduced-motion`.
+- **Chart Consistency:** Replaced the remaining default Streamlit bar charts (fleet taxonomy, approach quadrants) with themed Plotly bars using the class colour palette and hover tooltips.
 - **Synced Playback Controls:** AI-overlay / raw-feed stream switch, overlay re-render action, Start / Midpoint / End time-window jumps, and active-window row counts.
 - **Operator Directive Feed:** Compact directive cards with mode/status pills, savings/confidence, **Dispatch** and **Dismiss** actions, mode filters, and a collapsed archive for older records.
 - **What-If Lab:** Reset-to-baseline callback, scenario KPI band, per-class avoided-CO₂ chart, audit table, and CSV export.
@@ -200,7 +202,7 @@ This project retrofits existing municipal CCTV traffic camera fleets into a real
 ## 3. What HAS TO BE DONE (Pending Tasks & Open Gaps)
 
 ### ✅ Priority 1: Milestone M8 — Demo Video Recording & Git Release Freeze [COMPLETE]
-- **Demo Backup Video:** `artifacts/demo_backup.mp4` — 120.5s, 1600×1000 H.264 at 2 fps, recorded end-to-end from the final UI (video operations KPIs, live advisory generation, choke heatmap, operator dispatch, What-If lab, and Image Intelligence preset).
+- **Demo Backup Video:** `artifacts/demo_backup.mp4` — 120.5s, 1600×1000 H.264 at 2 fps, re-recorded end-to-end from the final motion-refreshed UI (video operations KPIs, live advisory generation, choke heatmap, operator dispatch, What-If lab, and Image Intelligence preset).
 - **Git Tag:** `demo-v1`.
 - **Upload Path & Preset Accuracy:** Verified the real browser upload flow on bundled samples. Moving auto-rickshaw: 5 detections (3 cars + 2 auto-rickshaws; mean confidence 0.85). Parked service auto: 7 detections (4 cars + 1 auto + 2 motorcycles; mean 0.80) — both visually correct. The Delhi aerial sample was removed from the preset gallery after producing heavy under-detection/misclassification on a dense top-down scene (3 low-confidence cars); the image file is retained on disk for limitation testing.
 
