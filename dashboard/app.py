@@ -6,6 +6,7 @@ Edge CCTV perception, kinematic state analysis, corridor emissions, and municipa
 from __future__ import annotations
 
 import json
+import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 import sys
@@ -185,28 +186,6 @@ st.markdown(
         color: #94a3b8;
         margin-top: 2px;
         line-height: 1.3;
-    }
-
-    /* Video player card & metadata badge */
-    .video-stream-card {
-        background: #11141c;
-        border: 1px solid #1f2937;
-        border-radius: 10px;
-        padding: 10px 14px;
-        margin-bottom: 10px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 8px;
-    }
-    .video-meta-tag {
-        background: #1e293b;
-        color: #94a3b8;
-        padding: 3px 8px;
-        border-radius: 4px;
-        font-size: 11px;
-        font-weight: 600;
     }
 
     /* Metrics & Cards */
@@ -898,7 +877,7 @@ def _reset_scenario_defaults() -> None:
         st.session_state[key] = value
 
 
-def render_directive_feed(directives: List[Dict[str, Any]], artifacts_dir: Path, limit: int = 6) -> None:
+def render_directive_feed(directives: List[Dict[str, Any]], limit: int = 6) -> None:
     """Render municipal directives as interactive operator cards."""
     if not directives:
         _html(
@@ -990,7 +969,7 @@ def render_directive_feed(directives: List[Dict[str, Any]], artifacts_dir: Path,
             if st.button(
                 "✓ Dispatch" if status != "dispatched" else "✓ Dispatched",
                 key=f"dispatch_{directive_id}_{idx}",
-                use_container_width=True,
+                width="stretch",
                 disabled=status == "dispatched",
                 type="primary" if status == "pending" else "secondary",
             ):
@@ -1001,7 +980,7 @@ def render_directive_feed(directives: List[Dict[str, Any]], artifacts_dir: Path,
             if st.button(
                 "Dismiss" if status != "dismissed" else "Recall",
                 key=f"dismiss_{directive_id}_{idx}",
-                use_container_width=True,
+                width="stretch",
                 disabled=status == "dismissed",
             ):
                 status_map[directive_id] = "dismissed"
@@ -1017,7 +996,7 @@ def render_directive_feed(directives: List[Dict[str, Any]], artifacts_dir: Path,
             if st.button(
                 f"+ Show {len(filtered) - limit} older directives",
                 key="btn_show_all_directives",
-                use_container_width=True,
+                width="stretch",
             ):
                 st.session_state["show_all_directives"] = True
                 st.rerun()
@@ -1256,7 +1235,7 @@ def render_video_operations(artifacts_dir: Path) -> None:
             {
                 "label": "Vehicles tracked",
                 "value": f"{total_vehicles:,}" if total_vehicles is not None else "—",
-                "foot": f"<b>{duration_s:.0f}s</b> analysed clip",
+                "foot": f"<b>{duration_s:.0f}s</b> telemetry span",
                 "icon": "◉",
                 "accent": "#38bdf8",
             },
@@ -1292,12 +1271,11 @@ def render_video_operations(artifacts_dir: Path) -> None:
     )
 
     # Quick actions
-    qa1, qa2, qa3, qa4, _qa_space = st.columns([0.14, 0.16, 0.17, 0.15, 0.38])
+    qa1, qa2, qa3, _qa_space = st.columns([0.15, 0.17, 0.19, 0.49])
     with qa1:
-        if st.button("↻ Refresh data", key="btn_refresh_telemetry", use_container_width=True):
+        if st.button("↻ Refresh data", key="btn_refresh_telemetry", width="stretch"):
             st.cache_data.clear()
             st.session_state["last_refresh"] = datetime.now(timezone.utc).strftime("%H:%M:%S")
-            st.toast("Telemetry cache refreshed")
             st.rerun()
     with qa2:
         csv_bytes = df.to_csv(index=False).encode("utf-8") if not df.empty else b""
@@ -1306,15 +1284,11 @@ def render_video_operations(artifacts_dir: Path) -> None:
             data=csv_bytes,
             file_name="eco_kinetic_telemetry.csv",
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
             disabled=df.empty,
         )
     with qa3:
-        run_dispatch = st.button("✦ Generate advisory", key="btn_generate_advisory", use_container_width=True, type="primary")
-    with qa4:
-        if st.button("⌁ What-if lab", key="btn_jump_whatif", use_container_width=True):
-            st.session_state["open_whatif"] = True
-            st.rerun()
+        run_dispatch = st.button("✦ Generate advisory", key="btn_generate_advisory", width="stretch", type="primary")
 
     if st.session_state.get("last_operator_action"):
         st.success(st.session_state.pop("last_operator_action"))
@@ -1332,7 +1306,7 @@ def render_video_operations(artifacts_dir: Path) -> None:
                     directives_log_path=artifacts_dir / "directives.jsonl",
                 )
             st.cache_data.clear()
-            st.success(
+            st.session_state["last_operator_action"] = (
                 f"Advisory {directive.directive_id[:10]} generated — "
                 f"{directive.estimated_co2_saved_g:.2f} g CO₂ avoided."
             )
@@ -1368,17 +1342,6 @@ def render_video_operations(artifacts_dir: Path) -> None:
         if active_file.exists() and active_file.stat().st_size > 1000:
             try:
                 st.video(str(active_file), format="video/mp4")
-                _html(
-                    f"""
-                    <div class="video-stream-card">
-                        <span style="font-size: 11.5px; color: #cbd5e1; font-weight: 600;">
-                            ● {("AI tracking overlay" if "tracking" in stream_mode.lower() else "Raw CCTV feed")}
-                            <span style="color:#6c7d93;font-weight:500;">· {active_file.name} · {active_file.stat().st_size / (1024*1024):.1f} MB</span>
-                        </span>
-                        <span class="video-meta-tag">H.264 · 720p · fast-start</span>
-                    </div>
-                    """,
-                )
             except Exception as e:
                 st.error(f"Video player encountered an error: {e}")
         else:
@@ -1386,7 +1349,7 @@ def render_video_operations(artifacts_dir: Path) -> None:
 
         with st.expander("🛠️ Overlay renderer", expanded=False):
             st.caption("Re-render tracked bounding boxes and state classifications onto the junction CCTV stream.")
-            if st.button("⚡ Re-render tracking overlay (H.264)", key="btn_rerender_overlay", use_container_width=True):
+            if st.button("⚡ Re-render tracking overlay (H.264)", key="btn_rerender_overlay", width="stretch"):
                 with st.spinner("Rendering tracking overlay to artifacts/overlay.mp4…"):
                     try:
                         from scripts.render_overlay import render_overlay
@@ -1415,19 +1378,34 @@ def render_video_operations(artifacts_dir: Path) -> None:
                 step=max(0.5, round((t_max - t_min) / 100, 1)),
                 key="focus_time",
             )
+            def _set_focus_time(value: float) -> None:
+                st.session_state["focus_time"] = float(value)
+
             jump1, jump2, jump3 = st.columns(3)
             with jump1:
-                if st.button("⏮ Start", key="jump_start", use_container_width=True):
-                    st.session_state["focus_time"] = t_min
-                    st.rerun()
+                st.button(
+                    "⏮ Start",
+                    key="jump_start",
+                    width="stretch",
+                    on_click=_set_focus_time,
+                    args=(t_min,),
+                )
             with jump2:
-                if st.button("◐ Midpoint", key="jump_mid", use_container_width=True):
-                    st.session_state["focus_time"] = (t_min + t_max) / 2.0
-                    st.rerun()
+                st.button(
+                    "◐ Midpoint",
+                    key="jump_mid",
+                    width="stretch",
+                    on_click=_set_focus_time,
+                    args=((t_min + t_max) / 2.0,),
+                )
             with jump3:
-                if st.button("End ⏭", key="jump_end", use_container_width=True):
-                    st.session_state["focus_time"] = t_max
-                    st.rerun()
+                st.button(
+                    "End ⏭",
+                    key="jump_end",
+                    width="stretch",
+                    on_click=_set_focus_time,
+                    args=(t_max,),
+                )
             w_start = max(t_min, t_curr - 30.0)
             w_end = min(t_max, t_curr + 30.0)
             window_df = df[(df["video_time_s"] >= w_start) & (df["video_time_s"] <= w_end)]
@@ -1441,7 +1419,7 @@ def render_video_operations(artifacts_dir: Path) -> None:
         render_section("Kinematics", "State composition", "Distribution of tracked vehicle states inside the active 60-second window.")
         if not window_df.empty and "state" in window_df.columns:
             state_counts = window_df["state"].value_counts()
-            st.plotly_chart(make_state_donut(state_counts), use_container_width=True, config={"displayModeBar": False})
+            st.plotly_chart(make_state_donut(state_counts), width="stretch", config={"displayModeBar": False})
             legend_bits = []
             for state_name in ["CRUISE", "ACCEL", "IDLE", "DECEL"]:
                 count = int(state_counts.get(state_name, 0))
@@ -1461,16 +1439,15 @@ def render_video_operations(artifacts_dir: Path) -> None:
     with heat_col:
         matrix = compute_choke_matrix(window_df if not window_df.empty else df, dt_s=dt_s)
         if matrix.sum() > 0:
-            st.plotly_chart(make_choke_heatmap(matrix), use_container_width=True, config={"displayModeBar": False})
+            st.plotly_chart(make_choke_heatmap(matrix), width="stretch", config={"displayModeBar": False})
         else:
             _html('<div class="empty-state">No idling vehicles detected in this window.</div>')
     with rank_col:
         if not choke_df.empty:
             st.dataframe(
                 choke_df.head(8),
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
-                height=280,
                 column_config={
                     "Idle Minutes": st.column_config.ProgressColumn(
                         "Idle minutes",
@@ -1492,8 +1469,8 @@ def render_video_operations(artifacts_dir: Path) -> None:
         "Dispatcher directive stream",
         "Every advisory is schema-validated, with carbon savings computed deterministically in Python — never by the LLM.",
     )
-    st.caption(f"Showing **{len(directives)}** most recent directives · operator can dispatch or dismiss each one.")
-    render_directive_feed(directives, artifacts_dir)
+    st.caption("Latest directives · operators can dispatch or dismiss each one.")
+    render_directive_feed(directives)
 
     st.divider()
 
@@ -1544,7 +1521,7 @@ def render_video_operations(artifacts_dir: Path) -> None:
                 if st.button(
                     "↺ Reset to baseline defaults",
                     key="btn_reset_scenario",
-                    use_container_width=True,
+                    width="stretch",
                     on_click=_reset_scenario_defaults,
                 ):
                     st.rerun()
@@ -1588,13 +1565,6 @@ def render_video_operations(artifacts_dir: Path) -> None:
                             "foot": f"<b>{avoid_co2:,.1f} g</b> avoided",
                             "icon": "↘",
                             "accent": "#10b981",
-                        },
-                        {
-                            "label": "Annualised signal",
-                            "value": f"{(avoid_co2 * 365 / 1000):,.1f} kg",
-                            "foot": "Extrapolated CO₂ / node / year",
-                            "icon": "∞",
-                            "accent": "#a78bfa",
                         },
                         {
                             "label": "Fleet EV share",
@@ -1643,16 +1613,16 @@ def render_video_operations(artifacts_dir: Path) -> None:
                             yaxis=dict(showgrid=False),
                             margin=dict(l=8, r=55, t=6, b=8),
                         )
-                        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+                        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
                     with table_col:
                         st.markdown("**Class-by-class audit**")
-                        st.dataframe(b_df, use_container_width=True, height=270)
+                        st.dataframe(b_df, width="stretch", height=270)
                         st.download_button(
                             "↓ Export scenario audit (CSV)",
                             data=b_df.to_csv().encode("utf-8"),
                             file_name="eco_kinetic_scenario_audit.csv",
                             mime="text/csv",
-                            use_container_width=True,
+                            width="stretch",
                         )
 
     # SECTION G: SIDEBAR METHODOLOGY EXPANDER
@@ -1674,6 +1644,8 @@ def render_video_operations(artifacts_dir: Path) -> None:
             )
         else:
             st.caption("CPU-only inference · zero CUDA dependencies")
+        if st.session_state.get("last_refresh"):
+            st.caption(f"Telemetry cache refreshed at **{st.session_state['last_refresh']} UTC**")
 
         with st.expander("Methodology & emission factors", expanded=False):
             st.caption("Indicative mode-bin estimates, not tailpipe measurements.")
@@ -1689,7 +1661,7 @@ def render_video_operations(artifacts_dir: Path) -> None:
                         "Source": c_data.get("source", "TODO"),
                         "Year": c_data.get("year", "TODO"),
                     })
-                st.dataframe(pd.DataFrame(ef_rows), use_container_width=True, hide_index=True)
+                st.dataframe(pd.DataFrame(ef_rows), width="stretch", hide_index=True)
             else:
                 st.write("Emission factors config not found.")
 
@@ -1711,7 +1683,7 @@ def _format_file_size(num_bytes: int) -> str:
     return f"{max(1, num_bytes // 1024)} KB"
 
 
-def render_image_sidebar(analyzer: TrafficImageAnalyzer, artifacts_dir: Path) -> None:
+def render_image_sidebar(analyzer: TrafficImageAnalyzer) -> None:
     """Compact sidebar engine console: status, taxonomy, and unique quick actions."""
     supported = list(analyzer.supported_classes)
     has_image = "active_img_bytes" in st.session_state
@@ -1774,7 +1746,7 @@ def render_image_sidebar(analyzer: TrafficImageAnalyzer, artifacts_dir: Path) ->
         if st.button(
             "↻ Re-run analysis",
             key="btn_sb_rerun",
-            use_container_width=True,
+            width="stretch",
             disabled=not has_image,
             help="Recompute perception and the advisory with the current threshold.",
         ):
@@ -1783,7 +1755,7 @@ def render_image_sidebar(analyzer: TrafficImageAnalyzer, artifacts_dir: Path) ->
         if st.button(
             "♻ Reload weights",
             key="btn_sb_reload",
-            use_container_width=True,
+            width="stretch",
             help="Clear the cached YOLO weights and reload them from disk.",
         ):
             get_image_analyzer.clear()
@@ -1838,10 +1810,10 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
     preset_selected = None
 
     with p_col1:
-        if st.button(preset_samples["moving_auto"]["name"], use_container_width=True, help=preset_samples["moving_auto"]["desc"]):
+        if st.button(preset_samples["moving_auto"]["name"], width="stretch", help=preset_samples["moving_auto"]["desc"]):
             preset_selected = "moving_auto"
     with p_col2:
-        if st.button(preset_samples["parked_auto"]["name"], use_container_width=True, help=preset_samples["parked_auto"]["desc"]):
+        if st.button(preset_samples["parked_auto"]["name"], width="stretch", help=preset_samples["parked_auto"]["desc"]):
             preset_selected = "parked_auto"
 
     if preset_selected:
@@ -1880,8 +1852,8 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
             step=0.05,
             help="Minimum model confidence required to retain a vehicle detection.",
         )
-        process_btn = st.button("🔍 Process image & generate advisory", type="primary", use_container_width=True)
-        if st.button("✕ Clear current result", key="btn_clear_image", use_container_width=True):
+        process_btn = st.button("🔍 Process image & generate advisory", type="primary", width="stretch")
+        if st.button("✕ Clear current result", key="btn_clear_image", width="stretch"):
             for key in ("active_img_bytes", "active_img_name", "img_result", "img_key", "img_filename", "img_source_type"):
                 st.session_state.pop(key, None)
             st.rerun()
@@ -1901,18 +1873,18 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
     # Empty State Check
     if "active_img_bytes" not in st.session_state:
         st.info("👆 Click any 1-Click Test Preset above or upload a photograph to start vehicle perception & AI advisory.")
-        render_image_sidebar(analyzer, artifacts_dir)
+        render_image_sidebar(analyzer)
         return
 
     # Trigger Inference and Advisory
     image_bytes = st.session_state["active_img_bytes"]
     image_filename = st.session_state.get("active_img_name", "traffic_photo.jpg")
-    file_key = f"{image_filename}_{len(image_bytes)}_{conf_thresh:.2f}_{user_api_key.strip()}"
+    file_key = f"{hashlib.md5(image_bytes).hexdigest()}_{conf_thresh:.2f}"
 
     should_process = (
         process_btn
         or preset_selected is not None
-        or ("img_result" not in st.session_state or st.session_state.get("img_key") != file_key)
+        or st.session_state.get("img_key") != file_key
     )
 
     if should_process:
@@ -2008,15 +1980,22 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
                 st.session_state["img_key"] = file_key
                 st.session_state["img_filename"] = image_filename
             except ImageValidationError as e:
+                st.session_state["img_key"] = file_key
+                st.session_state.pop("img_result", None)
                 st.error(f"Image Validation Error: {e}")
                 return
             except Exception as e:
+                st.session_state["img_key"] = file_key
+                st.session_state.pop("img_result", None)
                 st.error(f"Perception & Advisory Processing Failure: {e}")
                 return
 
     result = st.session_state.get("img_result")
     if not result:
         return
+
+    if st.session_state.get("image_flash"):
+        st.success(st.session_state.pop("image_flash"))
 
     # Image source status header
     active_filename = st.session_state.get("img_filename", "traffic_photo.jpg")
@@ -2189,7 +2168,7 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
             if st.button(
                 "✓ Advisory published" if pub_already else "📡 Publish advisory to directive log",
                 key="btn_publish_image_advisory",
-                use_container_width=True,
+                width="stretch",
                 type="primary",
                 disabled=pub_already,
             ):
@@ -2201,7 +2180,8 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
                     if pub_directive_id and pub_directive_id not in published:
                         published.append(pub_directive_id)
                     st.cache_data.clear()
-                    st.success("Advisory published to the municipal directive stream.")
+                    st.session_state["image_flash"] = "Advisory published to the municipal directive stream."
+                    st.rerun()
                 except Exception as exc:
                     st.error(f"Could not publish advisory: {exc}")
         with pub_col2:
@@ -2210,21 +2190,20 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
                 data=json.dumps(directive, indent=2, default=str).encode("utf-8"),
                 file_name="image_advisory.json",
                 mime="application/json",
-                use_container_width=True,
+                width="stretch",
             )
 
     st.write("")
-    tab_annotated, tab_side_by_side, tab_original, tab_spatial = st.tabs([
+    tab_annotated, tab_side_by_side, tab_spatial = st.tabs([
         "🔍 Perception Overlay",
         "🖼️ Side-by-Side Comparison",
-        "📷 Original Photograph",
         "🗺️ Spatial Approach Quadrants",
     ])
 
     with tab_annotated:
         st.image(
             result["annotated_image"],
-            use_container_width=True,
+            width="stretch",
             caption=f"High-contrast bounding boxes & confidence badges ({total_veh} detections above {conf_thresh:.2f} conf)",
         )
 
@@ -2232,13 +2211,10 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
         col_orig, col_annot = st.columns(2)
         with col_orig:
             st.subheader("Original Photograph")
-            st.image(result["original_image"], use_container_width=True)
+            st.image(result["original_image"], width="stretch")
         with col_annot:
             st.subheader("Perception Annotations")
-            st.image(result["annotated_image"], use_container_width=True)
-
-    with tab_original:
-        st.image(result["original_image"], use_container_width=True, caption="Raw input photograph (unannotated)")
+            st.image(result["annotated_image"], width="stretch")
 
     with tab_spatial:
         st.subheader("Spatial Approach Distribution (4 Cardinal Zones)")
@@ -2283,7 +2259,7 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
                 "Cruise Rate (g/km)": f"{crate:.1f}",
                 "Idle Burn (g/min)": f"{burn:.1f}",
             })
-        st.dataframe(pd.DataFrame(fleet_rows), use_container_width=True)
+        st.dataframe(pd.DataFrame(fleet_rows), width="stretch")
 
     # Empty State Warning
     if total_veh == 0:
@@ -2329,7 +2305,7 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
         with f_col2:
             st.caption(f"Showing **{len(table_rows)}** of **{len(records)}** detections ({selected_filter}).")
 
-        st.dataframe(pd.DataFrame(table_rows), use_container_width=True)
+        st.dataframe(pd.DataFrame(table_rows), width="stretch")
     else:
         st.info("No vehicle detection records to display.")
 
@@ -2347,7 +2323,7 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
             data=img_bytes,
             file_name=f"{base_name}_annotated.jpg",
             mime="image/jpeg",
-            use_container_width=True,
+            width="stretch",
         )
     with down_col2:
         csv_data = export_results_to_csv(result)
@@ -2356,7 +2332,7 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
             data=csv_data,
             file_name=f"{base_name}_detections.csv",
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
         )
     with down_col3:
         json_data = export_results_to_json(result)
@@ -2365,7 +2341,7 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
             data=json_data,
             file_name=f"{base_name}_results.json",
             mime="application/json",
-            use_container_width=True,
+            width="stretch",
         )
 
     # Methodology & Boundaries Expander (Phase D requirements)
@@ -2382,7 +2358,7 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
         )
 
     # Sidebar image-engine console with quick actions
-    render_image_sidebar(analyzer, artifacts_dir)
+    render_image_sidebar(analyzer)
 
 
 def main() -> None:
@@ -2411,16 +2387,6 @@ def main() -> None:
         label_visibility="collapsed",
         help="Switch between continuous CCTV video digital twin and single-frame photograph intelligence.",
     )
-
-    if curr_mode == "Junction Video Operations":
-        st.sidebar.markdown(
-            '<div class="nav-active-status-card">'
-            '<div class="active-badge-tag">● ACTIVE VIEWPORT</div>'
-            '<div class="active-title-text">🎥 Junction Video Operations</div>'
-            '<div class="active-desc-text">Continuous CCTV twin, spatial choke zones & counterfactual simulation.</div>'
-            "</div>",
-            unsafe_allow_html=True,
-        )
 
     st.sidebar.divider()
 

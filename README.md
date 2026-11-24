@@ -113,7 +113,6 @@ Open `http://localhost:8501` in your browser. The redesigned operations console 
 - **Refresh data** — invalidate cached telemetry and reload artifacts.
 - **Export telemetry** — download the active ledger as CSV.
 - **Generate advisory** — run the deterministic ATCS dispatcher against the current corridor window and append a new directive.
-- **What-if lab** — jump straight to the counterfactual policy section.
 
 ### Step 5b: Traffic Image Intelligence (Single-Frame Analysis)
 
