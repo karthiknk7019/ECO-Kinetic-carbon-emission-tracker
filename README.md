@@ -250,6 +250,7 @@ The Eco-Kinetic platform operates under a **Strict Privacy-by-Design** architect
 1. **COCO Taxonomy vs. Indian Road Realities:** Off-the-shelf COCO YOLO models do not include the 3-wheeler auto-rickshaw class (classifying them ambiguously as cars). We resolve this by providing fine-tuned weights on the **India Driving Dataset (IDD-FGVD)** (`models/finetuned/best.pt`) explicitly recognizing the 5 core Indian road classes.
 2. **Speed Proxy Calibration:** Speed estimation utilizes bounding box length normalization against class mean lengths. Perspective distortion is mitigated through camera calibration homography zones (`config/camera_calibration.yaml`), but extreme wide-angle lens distortion requires site-specific homography matrices.
 3. **CPU Frame Skipping:** To maintain real-time $\ge 25 \text{ FPS}$ tracking throughput on commodity edge CPUs, the default configuration processes every 2nd frame (`frame_skip=2`) with continuous kinematics interpolation.
+4. **Camera-Domain Specificity:** The shipped fine-tuned weights are calibrated to the deployment junction's viewpoint. On that 45s stable-camera clip the pipeline tracked 60 unique vehicles (2,002 car / 861 motorcycle / 749 auto-rickshaw observations) at ~25 processed FPS and computed 61.9 g CO₂. On four unrelated stable-camera stills (Delhi, Hyderabad, Rishikesh) detection degraded sharply — most vehicles collapsed to `car`, buses/trucks were missed, and billboard text produced false positives. Re-train or fine-tune per camera viewpoint before cross-site deployment.
 
 ---
 

@@ -1213,7 +1213,8 @@ def render_video_operations(artifacts_dir: Path) -> None:
 
     co2_display = "—"
     if not df.empty and "co2_cum_g" in df.columns:
-        co2_display = f"{float(df['co2_cum_g'].max()):,.1f} g"
+        per_track_max = df.groupby("track_id")["co2_cum_g"].max() if "track_id" in df.columns else df["co2_cum_g"]
+        co2_display = f"{float(per_track_max.sum()):,.1f} g"
     else:
         try:
             from twin.emission_engine import compute_track_emissions
@@ -1221,7 +1222,12 @@ def render_video_operations(artifacts_dir: Path) -> None:
             if not df.empty and em_factors:
                 em_df = compute_track_emissions(df, em_factors, min_age=15)
                 if not em_df.empty and "co2_cum_g" in em_df.columns:
-                    co2_display = f"{float(em_df['co2_cum_g'].max()):,.1f} g"
+                    per_track_max = (
+                        em_df.groupby("track_id")["co2_cum_g"].max()
+                        if "track_id" in em_df.columns
+                        else em_df["co2_cum_g"]
+                    )
+                    co2_display = f"{float(per_track_max.sum()):,.1f} g"
         except Exception:
             pass
 

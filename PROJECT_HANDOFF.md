@@ -175,6 +175,9 @@ This project retrofits existing municipal CCTV traffic camera fleets into a real
 - **Strict Guardrails:** Guaranteed absence of fabricated speeds, accelerations, motion states, or emissions for still images.
 - **Streamlit Integration (`dashboard/app.py`):** Sidebar navigation mode offering image upload, confidence slider, process button, original vs annotated preview, KPI cards, class breakdown chart, detection table, and JPG/CSV/JSON exports.
 - **Test Suite Health:** **73/73 tests passing** (`pytest -q` in ~8s) with dedicated coverage in `tests/test_image_intelligence.py` and the Streamlit preset/advisory integration test.
+- **Stable-Camera Video Validation:** Re-ran the full pipeline on the 45s junction clip (frame skip 2) in 27s (~25 processed FPS): 60 unique tracks, 2,002 car / 861 motorcycle / 749 auto-rickshaw observations, 61.9 g CO₂ accumulated, 21 counted vehicles in the 60s window, no idle/stop events (free-flowing traffic), rules advisory correctly returned `no_action`.
+- **Cross-Camera Generalization Check:** Four unrelated stable-camera stills (Delhi aerial, Hyderabad flyover, Rishikesh bus/motorcycles, old-city truck) degraded sharply — nearly all detections collapsed to `car`, buses/trucks were missed, and billboard text produced false positives. The model is viewpoint-specific; per-camera fine-tuning is required for new deployments.
+- **CO₂ KPI Correction:** The corridor total now sums each track's final cumulative grams instead of reporting the single highest track, which understated the 45s clip (9.7 g → 61.9 g).
 
 ### ✅ Operations Console UI Refresh (Streamlit)
 - **Theme System:** Added `.streamlit/config.toml` with a dark mint-accented theme, plus a consolidated design layer in `dashboard/app.py` (Inter typography, radial background, cards, chips, status pills, custom scroll and widget styling).
