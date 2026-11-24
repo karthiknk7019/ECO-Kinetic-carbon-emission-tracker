@@ -122,5 +122,17 @@ Multi-camera fusion, RTSP ingestion (mention as thin adapter in docs only),homog
 - **Dynamic Taxonomy**: Runtime resolution of `model.names ∩ active_classes`. Transparently warns when `auto_rickshaw` is missing in stock COCO weights.
 - **Streamlit Integration**: Dual-mode navigation in `dashboard/app.py` preserving continuous video operations while adding single-frame inspection, KPI cards, class chart, detection table, and JPG/CSV/JSON exports.
 - **Privacy & Physical Boundaries**: 100% local processing; zero PII; zero external cloud transmission; strictly guarantees zero fabricated speed, acceleration, or emission values from still photographs.
-- **Status**: 72/72 tests passing (`pytest -q`). Full regression and unit coverage in `tests/test_image_intelligence.py`.
+- **Status**: 73/73 tests passing (`pytest -q`). Full regression and unit coverage in `tests/test_image_intelligence.py` and the Streamlit preset/advisory integration test.
+
+## 12. Operations Console UI Refresh [COMPLETE]
+- **Theme**: `.streamlit/config.toml` dark theme plus a consolidated design layer in `dashboard/app.py`.
+- **Hero/KPIs**: Status chips and five custom stat cards replacing plain `st.metric` blocks.
+- **Quick Actions**: Refresh telemetry, export telemetry CSV, generate advisory from live corridor, jump to What-If.
+- **Analytics**: Plotly kinematic-state donut and custom 4×4 spatial choke heatmap.
+- **Playback**: AI-overlay/raw-feed switch, overlay re-render, Start/Midpoint/End time-window jumps.
+- **Directive Feed**: Mode/status pills, Dispatch/Dismiss operator actions, mode filter, collapsed archive.
+- **What-If Lab**: Reset callback, scenario KPI band, avoided-CO₂ class chart, audit CSV export.
+- **Image Mode**: Preset gallery, clear-result action, advisory publish-to-log, advisory JSON export.
+- **Verification**: 73/73 tests pass; visually validated with headless Chrome at 1600px.
+
 

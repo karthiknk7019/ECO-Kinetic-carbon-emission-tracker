@@ -10,3 +10,8 @@ Log of architectural choices, deviations, and judgment calls during development.
 - Implemented `tests/test_dispatcher.py` covering 20 mock payloads gate (100% schema validity), bounds enforcement, offline fallback, and append-only JSONL persistence.
 - Updated `config/emission_factors.yaml` with official ARAI / CPCB source apportionment citations for auto-rickshaws.
 - Authored comprehensive `README.md` documenting end-to-end architecture (Mermaid), installation, methodology math, CPCB factor citations, zero-PII privacy guarantee, and deployment topology.
+- Recreated the project virtualenv with the pinned CPU-only dependency set; uninstalled the transitive `nvidia-ml-py` wheel to preserve the zero-CUDA edge guardrail (`torch.cuda.is_available() == False`).
+- Redesigned the Streamlit operations console: added `.streamlit/config.toml`, custom KPI/hero/status components, Plotly state donut and 4×4 choke heatmap, quick-action row, synced time-window jump controls, interactive directive dispatch/dismiss cards with filters/archive, scenario reset/export controls, and image-mode preset/publish actions.
+- Fixed a Streamlit widget-state bug in the What-If reset by moving state mutation into an `on_click` callback so it executes before widget instantiation.
+- Verified all 73 tests pass after the UI refresh and visually validated both console modes in headless Chrome.
+

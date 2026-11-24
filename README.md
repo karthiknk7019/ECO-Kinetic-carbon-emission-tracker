@@ -89,7 +89,7 @@ cp .env.example .env
 ### Step 3: Run Full Golden Test Suite
 ```bash
 .venv/bin/pytest -q
-# Expected: 54 passed in ~28s
+# Expected: 73 passed in ~8s
 ```
 
 ### Step 4: Run Perception Pipeline on Real CCTV Video
@@ -105,24 +105,31 @@ python scripts/run_pipeline.py --mock
 ```bash
 streamlit run dashboard/app.py
 ```
-Open `http://localhost:8501` in your browser. Use the left sidebar to navigate between:
-1. **Junction Video Operations**: Continuous tracking overlay, 60s kinematic window, 4x4 spatial choke grid, What-If counterfactual policy simulation, and municipal directive stream.
-2. **Image Intelligence**: Instantaneous single-frame photograph vehicle perception with bounding boxes, class distribution, and data exports.
+Open `http://localhost:8501` in your browser. The redesigned operations console provides:
+1. **Junction Video Operations**: A hero status band, five custom KPI cards, a Plotly kinematic-state donut, an interactive 4×4 choke heatmap, synced CCTV playback with Start / Midpoint / End jump controls, operator directive cards with **Dispatch** / **Dismiss** actions, and a What-If counterfactual lab with reset and CSV export.
+2. **Image Intelligence**: 1-click CCTV presets, single-frame perception, CPCB carbon snapshot, an Edge AI municipal advisory, and controls to publish the advisory into the municipal directive log.
+
+**Quick actions** on the video console:
+- **Refresh data** — invalidate cached telemetry and reload artifacts.
+- **Export telemetry** — download the active ledger as CSV.
+- **Generate advisory** — run the deterministic ATCS dispatcher against the current corridor window and append a new directive.
+- **What-if lab** — jump straight to the counterfactual policy section.
 
 ### Step 5b: Traffic Image Intelligence (Single-Frame Analysis)
 
 Users can analyze stationary intersection photographs without requiring the continuous video pipeline:
 - **Workflow**:
   1. Select **Image Intelligence** in the sidebar.
-  2. Upload any traffic photograph (`.jpg`, `.jpeg`, `.png`, or `.webp`, max 20 MB).
-  3. Preview original photograph and select desired detection confidence threshold (default: `0.30`).
-  4. Click **Process Image** to run CPU-only YOLO inference.
-  5. Inspect annotated bounding boxes, vehicle counts, mean confidence, latency (ms), and class distribution chart.
-  6. Download annotated images and detection ledgers as CSV or JSON.
+  2. Click a **1-click CCTV preset** (moving auto-rickshaw, parked service auto, or Delhi congestion), or upload a custom photograph (`.jpg`, `.jpeg`, `.png`, or `.webp`, max 20 MB).
+  3. Adjust the detection confidence threshold (default: `0.25`).
+  4. Click **Process image & generate advisory** to run CPU-only YOLO inference and the deterministic dispatcher.
+  5. Inspect annotated bounding boxes, fleet KPIs, the carbon advisory, spatial approach quadrants, and the per-class CPCB index.
+  6. Download the annotated image, detection ledger CSV, full JSON intelligence, or the advisory JSON.
+  7. Optionally click **Publish advisory to directive log** to append it to `artifacts/directives.jsonl`.
 - **Model Taxonomy & Class Support**:
-  - Configured in `config/app.yaml` (`yolo26n.pt` on CPU). Dynamically resolves `model.names ∩ active_classes`.
-  - Stock COCO weights support 4 vehicle classes: `car`, `motorcycle`, `bus`, and `truck`.
-  - *Auto-Rickshaw Limitation Note:* Off-the-shelf COCO models lack a dedicated `auto_rickshaw` class. The UI transparently reports this constraint without inventing detections. When 5-class Indian taxonomy is required, fine-tuned weights (`models/finetuned/best.pt`) are available.
+  - Configured in `config/app.yaml` (`models/finetuned/best.pt` on CPU). Dynamically resolves `model.names ∩ active_classes`.
+  - The shipped 5-class Indian-road model supports `car`, `motorcycle`, `auto_rickshaw`, `bus`, and `truck`.
+  - *Fallback Note:* If stock COCO weights are configured instead, the UI transparently reports that `auto_rickshaw` is unavailable rather than inventing detections.
 - **Strict Privacy & Input Security**:
   - 100% local CPU processing in volatile memory. No photographs or frames are transmitted to external services, commercial APIs, or LLMs.
   - Zero PII: Excludes facial recognition and license plate recognition (ANPR).

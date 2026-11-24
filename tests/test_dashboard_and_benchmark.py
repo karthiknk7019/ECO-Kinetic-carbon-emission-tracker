@@ -75,6 +75,47 @@ def test_dashboard_image_intelligence_mode_renders_safely():
     assert "Image Intelligence" in at.title[0].value
 
 
+def test_dashboard_image_intelligence_preset_and_advisory():
+    """Verify 1-click preset execution, multi-class perception, and AI advisory generation."""
+    at = AppTest.from_file(str(REPO_ROOT / "dashboard" / "app.py"))
+    at.run(timeout=10)
+    assert not at.exception
+
+    # Switch to Image Intelligence
+    at.sidebar.radio[0].set_value("Image Intelligence")
+    at.run(timeout=10)
+    assert not at.exception
+
+    # Click Moving Auto-Rickshaw preset
+    btn_clicked = False
+    for b in at.button:
+        if "Moving Auto-Rickshaw" in b.label:
+            b.click()
+            btn_clicked = True
+            break
+    assert btn_clicked, "Preset button for Moving Auto-Rickshaw must be present"
+
+    at.run(timeout=10)
+    assert not at.exception, f"App raised exception on preset click: {at.exception}"
+
+    # Verify session state and results
+    assert "img_result" in at.session_state
+    res = at.session_state["img_result"]
+    assert res["total_detections"] > 0
+    assert "auto_rickshaw" in res["per_class_counts"]
+    assert res["per_class_counts"]["auto_rickshaw"] >= 1
+    assert res["per_class_counts"]["car"] >= 1
+
+    # Verify Edge AI advisory
+    assert "directive" in res
+    directive = res["directive"]
+    assert directive["mode"] in ("llm", "rules_fallback")
+    assert "actions" in directive
+    assert len(directive["actions"]) > 0
+    assert directive["estimated_co2_saved_g"] >= 0.0
+    assert len(directive["rationale"]) > 0
+
+
 def test_dashboard_app_resilient_to_missing_artifacts(tmp_path: Path):
     """Verify Streamlit dashboard runs cleanly even if artifacts dir is missing."""
     artifacts_dir = REPO_ROOT / "artifacts"

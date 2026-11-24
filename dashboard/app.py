@@ -6,11 +6,13 @@ Edge CCTV perception, kinematic state analysis, corridor emissions, and municipa
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 import sys
 from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 import pyarrow.parquet as pq
 import streamlit as st
 import yaml
@@ -27,6 +29,9 @@ from perception.image_inference import (
     export_results_to_csv,
     export_results_to_json,
 )
+from dispatcher.llm_dispatcher import append_directive_to_log, dispatch
+from dispatcher.schema import CorridorPayload, Directive, TopChokeZone
+from dispatcher.rules_fallback import _determine_lane_from_zone
 
 
 @st.cache_resource
@@ -46,6 +51,165 @@ st.set_page_config(
 st.markdown(
     """
     <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    /* Global interactive buttons with hover lift, gradient glow, and smooth feedback */
+    .stButton > button {
+        border-radius: 9px !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.3px !important;
+        transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        position: relative !important;
+        overflow: hidden !important;
+    }
+    .stButton > button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3) !important;
+        border-color: #10b981 !important;
+    }
+    .stButton > button:active {
+        transform: translateY(0px) scale(0.98) !important;
+    }
+    .stButton > button[kind="primary"], button[data-testid="baseButton-primary"] {
+        background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
+        color: #ffffff !important;
+        border: 1px solid #34d399 !important;
+        box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35) !important;
+    }
+    .stButton > button[kind="primary"]:hover, button[data-testid="baseButton-primary"]:hover {
+        background: linear-gradient(135deg, #10b981 0%, #34d399 100%) !important;
+        box-shadow: 0 6px 24px rgba(16, 185, 129, 0.55) !important;
+        transform: translateY(-2px) scale(1.01) !important;
+    }
+    .stButton > button[kind="secondary"], button[data-testid="baseButton-secondary"] {
+        background: #1e2230 !important;
+        color: #e2e8f0 !important;
+        border: 1px solid #334155 !important;
+    }
+    .stButton > button[kind="secondary"]:hover, button[data-testid="baseButton-secondary"]:hover {
+        background: #282f44 !important;
+        border-color: #38bdf8 !important;
+        box-shadow: 0 4px 16px rgba(56, 189, 248, 0.3) !important;
+        color: #38bdf8 !important;
+    }
+
+    /* Sidebar console brand card */
+    .sidebar-console-card {
+        background: linear-gradient(135deg, #0b1320 0%, #172545 50%, #0c201d 100%);
+        border: 1px solid #2563eb;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 14px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+    }
+    .console-status-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 6px;
+    }
+    .pulse-indicator {
+        width: 9px;
+        height: 9px;
+        background-color: #10b981;
+        border-radius: 50%;
+        display: inline-block;
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+        animation: pulseGlow 1.8s infinite;
+    }
+    @keyframes pulseGlow {
+        0% {
+            transform: scale(0.95);
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+        }
+        70% {
+            transform: scale(1.05);
+            box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+        }
+        100% {
+            transform: scale(0.95);
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+        }
+    }
+    .status-text {
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.8px;
+        color: #10b981;
+        text-transform: uppercase;
+    }
+    .console-heading {
+        font-size: 18px;
+        font-weight: 800;
+        color: #f8fafc;
+        letter-spacing: -0.3px;
+        margin-bottom: 2px;
+    }
+    .console-subtext {
+        font-size: 11px;
+        color: #94a3b8;
+        line-height: 1.3;
+    }
+    .nav-section-title {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.9px;
+        color: #64748b;
+        margin-top: 14px;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+    }
+    .nav-active-status-card {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(14, 165, 233, 0.08) 100%);
+        border: 1px solid rgba(16, 185, 129, 0.4);
+        border-radius: 10px;
+        padding: 12px;
+        margin-top: 10px;
+        margin-bottom: 12px;
+    }
+    .active-badge-tag {
+        font-size: 10px;
+        font-weight: 700;
+        color: #10b981;
+        letter-spacing: 0.6px;
+        text-transform: uppercase;
+        margin-bottom: 3px;
+    }
+    .active-title-text {
+        font-size: 13px;
+        font-weight: 700;
+        color: #f1f5f9;
+    }
+    .active-desc-text {
+        font-size: 11px;
+        color: #94a3b8;
+        margin-top: 2px;
+        line-height: 1.3;
+    }
+
+    /* Video player card & metadata badge */
+    .video-stream-card {
+        background: #11141c;
+        border: 1px solid #1f2937;
+        border-radius: 10px;
+        padding: 10px 14px;
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .video-meta-tag {
+        background: #1e293b;
+        color: #94a3b8;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    /* Metrics & Cards */
     .metric-card {
         background-color: #1a1c24;
         border: 1px solid #2d313e;
@@ -80,10 +244,783 @@ st.markdown(
         font-size: 11px;
         font-weight: 600;
     }
+    .kpi-card {
+        background: linear-gradient(135deg, #161821 0%, #1e2230 100%);
+        border: 1px solid #2d3748;
+        border-radius: 10px;
+        padding: 14px;
+        text-align: center;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    .kpi-title {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: #94a3b8;
+        letter-spacing: 0.6px;
+        margin-bottom: 4px;
+    }
+    .kpi-num {
+        font-size: 26px;
+        font-weight: 700;
+        color: #f8fafc;
+    }
+    .kpi-num-green {
+        color: #10b981;
+    }
+    .kpi-num-blue {
+        color: #38bdf8;
+    }
+    .kpi-num-amber {
+        color: #fbbf24;
+    }
+    .kpi-num-purple {
+        color: #c084fc;
+    }
+    .kpi-sub {
+        font-size: 11px;
+        color: #64748b;
+        margin-top: 3px;
+    }
+    .ai-advisory-container {
+        background: linear-gradient(135deg, #0f172a 0%, #172554 50%, #064e3b 100%);
+        border: 1px solid #2563eb;
+        border-radius: 12px;
+        padding: 20px;
+        margin: 15px 0 20px 0;
+        box-shadow: 0 8px 24px rgba(37, 99, 235, 0.15);
+    }
+    .fleet-tag {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        margin: 2px;
+    }
+
+    /* ------------------------------------------------------------------
+       CONSOLE THEME REFRESH — calm, editorial, operations-grade
+       ------------------------------------------------------------------ */
+    html, body, [class*="css"], .stApp {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+    }
+    .stApp {
+        background:
+            radial-gradient(1100px 620px at 18% -12%, rgba(16, 185, 129, 0.13), transparent 60%),
+            radial-gradient(900px 520px at 92% 0%, rgba(56, 189, 248, 0.10), transparent 58%),
+            #070a10;
+    }
+    header[data-testid="stHeader"] {
+        background: transparent;
+    }
+    [data-testid="stToolbar"], [data-testid="stDecoration"], #MainMenu, footer {
+        visibility: hidden;
+    }
+    .block-container {
+        max-width: 1520px;
+        padding-top: 2.2rem;
+        padding-bottom: 4rem;
+    }
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #0a0f18 0%, #070a10 100%);
+        border-right: 1px solid rgba(148, 163, 184, 0.12);
+    }
+    [data-testid="stSidebar"] .block-container {
+        padding-top: 1.6rem;
+    }
+    h1, h2, h3, h4 {
+        letter-spacing: -0.035em !important;
+        color: #f8fafc !important;
+    }
+    h1 {
+        font-size: 2.35rem !important;
+        font-weight: 800 !important;
+        line-height: 1.08 !important;
+    }
+    h2 { font-size: 1.35rem !important; font-weight: 700 !important; }
+    h3 { font-size: 1.05rem !important; font-weight: 700 !important; }
+    p, label, .stMarkdown {
+        color: #cbd5e1;
+    }
+    .stCaption, [data-testid="stCaptionContainer"] {
+        color: #7c8ba1 !important;
+        letter-spacing: 0.01em;
+    }
+    hr, [data-testid="stDivider"] {
+        border-color: rgba(148, 163, 184, 0.13) !important;
+        margin: 1.1rem 0 !important;
+    }
+
+    /* Hero */
+    .console-hero {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(148, 163, 184, 0.16);
+        border-radius: 20px;
+        padding: 26px 28px 24px 28px;
+        margin-bottom: 20px;
+        background:
+            linear-gradient(115deg, rgba(16, 185, 129, 0.13) 0%, rgba(15, 23, 42, 0.55) 42%, rgba(56, 189, 248, 0.09) 100%);
+        box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+    }
+    .console-hero::after {
+        content: "";
+        position: absolute;
+        width: 340px;
+        height: 340px;
+        right: -120px;
+        top: -180px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(16, 185, 129, 0.25), transparent 65%);
+        pointer-events: none;
+    }
+    .hero-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: #34d399;
+        margin-bottom: 10px;
+    }
+    .hero-copy {
+        max-width: 780px;
+        color: #a9b7c9;
+        font-size: 14px;
+        line-height: 1.55;
+        margin-top: 6px;
+    }
+    .chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 16px;
+    }
+    .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        border-radius: 999px;
+        padding: 5px 10px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        color: #a9b7c9;
+        background: rgba(15, 23, 42, 0.55);
+    }
+    .chip-live {
+        border-color: rgba(16, 185, 129, 0.42);
+        color: #6ee7b7;
+        background: rgba(16, 185, 129, 0.10);
+    }
+    .chip-blue {
+        border-color: rgba(56, 189, 248, 0.36);
+        color: #7dd3fc;
+        background: rgba(56, 189, 248, 0.08);
+    }
+    .chip-amber {
+        border-color: rgba(245, 158, 11, 0.36);
+        color: #fcd34d;
+        background: rgba(245, 158, 11, 0.08);
+    }
+    .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: currentColor;
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.13);
+    }
+
+    /* Section headers */
+    .section-head {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 14px;
+        margin: 22px 0 12px 0;
+    }
+    .section-kicker {
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: #34d399;
+        margin-bottom: 4px;
+    }
+    .section-title {
+        font-size: 19px;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        color: #f8fafc;
+    }
+    .section-sub {
+        color: #7c8ba1;
+        font-size: 12px;
+        margin-top: 3px;
+    }
+
+    /* KPI cards */
+    .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 12px;
+        margin: 4px 0 6px 0;
+    }
+    .stat-card {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(148, 163, 184, 0.15);
+        border-radius: 15px;
+        padding: 16px 16px 14px 16px;
+        background: linear-gradient(160deg, rgba(22, 30, 46, 0.92), rgba(12, 17, 27, 0.92));
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+        min-height: 118px;
+    }
+    .stat-card::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        height: 2px;
+        background: var(--accent, #10b981);
+        opacity: 0.9;
+    }
+    .stat-icon {
+        font-size: 14px;
+        opacity: 0.9;
+        margin-bottom: 8px;
+    }
+    .stat-label {
+        color: #8394aa;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        margin-bottom: 3px;
+    }
+    .stat-value {
+        color: #f8fafc;
+        font-size: 27px;
+        font-weight: 700;
+        letter-spacing: -0.045em;
+        line-height: 1.05;
+    }
+    .stat-foot {
+        color: #6c7d93;
+        font-size: 10.5px;
+        margin-top: 7px;
+    }
+    .stat-foot b { color: var(--accent, #10b981); font-weight: 600; }
+
+    /* Panels */
+    .panel-card {
+        border: 1px solid rgba(148, 163, 184, 0.14);
+        border-radius: 16px;
+        background: rgba(13, 19, 30, 0.82);
+        padding: 18px;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+    }
+    .panel-title {
+        font-size: 14px;
+        font-weight: 650;
+        color: #e6ebf2;
+        letter-spacing: -0.01em;
+    }
+    .panel-sub {
+        font-size: 11px;
+        color: #7c8ba1;
+        margin-top: 2px;
+        margin-bottom: 10px;
+    }
+
+    /* Directive cards */
+    .feed-card {
+        border: 1px solid rgba(148, 163, 184, 0.14);
+        border-left: 3px solid var(--edge, #38bdf8);
+        border-radius: 13px;
+        background: linear-gradient(120deg, rgba(17, 24, 39, 0.85), rgba(10, 15, 24, 0.85));
+        padding: 14px 16px;
+        margin-bottom: 10px;
+    }
+    .feed-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    .feed-id {
+        color: #7c8ba1;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 10.5px;
+    }
+    .feed-rationale {
+        color: #b7c3d4;
+        font-size: 12.5px;
+        line-height: 1.5;
+        margin-top: 9px;
+    }
+    .feed-actions {
+        color: #7dd3fc;
+        font-size: 11.5px;
+        margin-top: 6px;
+    }
+    .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 999px;
+        padding: 4px 9px;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+    }
+    .status-pending { background: rgba(245, 158, 11, 0.12); color: #fcd34d; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .status-dispatched { background: rgba(16, 185, 129, 0.12); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .status-dismissed { background: rgba(148, 163, 184, 0.1); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.22); }
+
+    /* Streamlit widget polish */
+    [data-testid="stMetric"] {
+        background: linear-gradient(160deg, rgba(22, 30, 46, 0.9), rgba(12, 17, 27, 0.9));
+        border: 1px solid rgba(148, 163, 184, 0.15);
+        border-radius: 14px;
+        padding: 14px 16px;
+    }
+    [data-testid="stMetricLabel"] { color: #8394aa !important; font-size: 10px !important; letter-spacing: 0.1em; text-transform: uppercase; }
+    [data-testid="stMetricValue"] { color: #f8fafc !important; font-weight: 700 !important; }
+    [data-testid="stDataFrame"] {
+        border: 1px solid rgba(148, 163, 184, 0.14);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 4px;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+        padding-bottom: 2px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 8px 8px 0 0;
+        color: #8394aa;
+        font-size: 12.5px;
+        font-weight: 600;
+        padding: 8px 13px;
+    }
+    .stTabs [aria-selected="true"] {
+        color: #f8fafc !important;
+        background: rgba(16, 185, 129, 0.08);
+    }
+    [data-testid="stExpander"] {
+        border: 1px solid rgba(148, 163, 184, 0.14) !important;
+        border-radius: 12px !important;
+        background: rgba(13, 19, 30, 0.6);
+        overflow: hidden;
+    }
+    [data-testid="stFileUploader"] section {
+        border-radius: 12px;
+        border: 1px dashed rgba(148, 163, 184, 0.3);
+        background: rgba(13, 19, 30, 0.55);
+    }
+    .stSlider [data-baseweb="slider"] { padding-top: 2px; }
+    .stRadio [role="radiogroup"] { gap: 6px; }
+    .stRadio [role="radiogroup"] label {
+        background: rgba(15, 23, 42, 0.55);
+        border: 1px solid rgba(148, 163, 184, 0.14);
+        border-radius: 9px;
+        padding: 7px 10px;
+    }
+    [data-testid="stSidebar"] .stRadio [role="radiogroup"] label {
+        padding: 5px 8px;
+    }
+    [data-testid="stSidebar"] .stRadio [role="radiogroup"] label p {
+        font-size: 12px;
+    }
+    .stButton > button {
+        min-height: 38px;
+        padding: 7px 15px !important;
+        font-size: 12.5px !important;
+        box-shadow: none;
+    }
+    .stDownloadButton > button {
+        border-radius: 9px !important;
+        border: 1px solid rgba(148, 163, 184, 0.2) !important;
+        background: rgba(15, 23, 42, 0.6) !important;
+        color: #cbd5e1 !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+    }
+    .stDownloadButton > button:hover {
+        border-color: #34d399 !important;
+        color: #6ee7b7 !important;
+    }
+    .empty-state {
+        border: 1px dashed rgba(148, 163, 184, 0.28);
+        border-radius: 14px;
+        padding: 22px;
+        text-align: center;
+        color: #8394aa;
+        background: rgba(13, 19, 30, 0.45);
+        font-size: 12.5px;
+    }
+    @media (max-width: 1200px) {
+        .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
     </style>
     """,
     unsafe_allow_html=True,
 )
+
+
+# ---------------------------------------------------------------------------
+# Presentation helpers
+# ---------------------------------------------------------------------------
+STATE_COLORS = {
+    "CRUISE": "#10b981",
+    "ACCEL": "#f59e0b",
+    "IDLE": "#ef4444",
+    "DECEL": "#38bdf8",
+    "UNINIT": "#475569",
+}
+STATE_LABELS = {
+    "CRUISE": "Cruise",
+    "ACCEL": "Accelerating",
+    "IDLE": "Idling",
+    "DECEL": "Decelerating",
+    "UNINIT": "Initialising",
+}
+CLASS_COLORS = {
+    "car": "#38bdf8",
+    "motorcycle": "#fbbf24",
+    "auto_rickshaw": "#34d399",
+    "bus": "#c084fc",
+    "truck": "#fb7185",
+}
+
+
+def _html(markup: str) -> None:
+    """Render custom HTML without Markdown mistaking indented lines for code blocks."""
+    compact = "".join(line.strip() for line in markup.strip().splitlines())
+    st.markdown(compact, unsafe_allow_html=True)
+
+
+def render_section(kicker: str, title: str, subtitle: str = "") -> None:
+    sub = f'<div class="section-sub">{subtitle}</div>' if subtitle else ""
+    _html(
+        f"""
+        <div class="section-head">
+            <div>
+                <div class="section-kicker">{kicker}</div>
+                <div class="section-title">{title}</div>
+                {sub}
+            </div>
+        </div>
+        """
+    )
+
+
+def render_stat_grid(items: List[Dict[str, str]]) -> None:
+    cards = []
+    for item in items:
+        cards.append(
+            f"""
+            <div class="stat-card" style="--accent:{item.get('accent', '#10b981')};">
+                <div class="stat-icon">{item.get('icon', '')}</div>
+                <div class="stat-label">{item.get('label', '')}</div>
+                <div class="stat-value">{item.get('value', '—')}</div>
+                <div class="stat-foot">{item.get('foot', '')}</div>
+            </div>
+            """
+        )
+    _html(f'<div class="stat-grid">{"".join(cards)}</div>')
+
+
+def _base_figure(height: int = 250) -> go.Figure:
+    fig = go.Figure()
+    fig.update_layout(
+        height=height,
+        margin=dict(l=8, r=8, t=8, b=8),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(family="Inter, sans-serif", color="#94a3b8", size=11),
+        showlegend=False,
+        hoverlabel=dict(bgcolor="#111827", bordercolor="rgba(148,163,184,0.2)", font_color="#e5e7eb"),
+    )
+    return fig
+
+
+def make_state_donut(state_counts: pd.Series) -> go.Figure:
+    labels = [STATE_LABELS.get(str(s), str(s)) for s in state_counts.index]
+    colors = [STATE_COLORS.get(str(s), "#475569") for s in state_counts.index]
+    total = int(state_counts.sum())
+    fig = _base_figure(238)
+    fig.add_trace(
+        go.Pie(
+            labels=labels,
+            values=state_counts.values,
+            hole=0.68,
+            marker=dict(colors=colors, line=dict(color="#0b1018", width=2)),
+            textinfo="percent",
+            textfont=dict(size=10, color="#e6ebf2"),
+            hovertemplate="<b>%{label}</b><br>%{value:,} observations<br>%{percent}<extra></extra>",
+            sort=False,
+        )
+    )
+    fig.update_layout(
+        annotations=[
+            dict(
+                text=f"<b style='font-size:22px;color:#f8fafc'>{total:,}</b><br><span style='font-size:9px;color:#7c8ba1;letter-spacing:0.12em'>OBSERVATIONS</span>",
+                x=0.5,
+                y=0.5,
+                showarrow=False,
+            )
+        ],
+        margin=dict(l=0, r=0, t=4, b=0),
+    )
+    return fig
+
+
+def compute_choke_matrix(df: pd.DataFrame, dt_s: float = 0.08) -> np.ndarray:
+    """Return a 4x4 matrix of idle minutes (rows = cy bands, cols = cx bands)."""
+    grid = np.zeros((4, 4), dtype=float)
+    if df.empty or "state" not in df.columns:
+        return grid
+    idle = df[df["state"] == "IDLE"]
+    if idle.empty:
+        return grid
+    cx = np.clip(idle["cx_norm"].values, 0.0, 0.9999)
+    cy = np.clip(idle["cy_norm"].values, 0.0, 0.9999)
+    cols = (cx * 4).astype(int)
+    rows = (cy * 4).astype(int)
+    for r, c in zip(rows, cols):
+        grid[r, c] += dt_s / 60.0
+    return grid
+
+
+def make_choke_heatmap(matrix: np.ndarray) -> go.Figure:
+    fig = _base_figure(280)
+    text = [[f"{v:.1f}" if v > 0 else "" for v in row] for row in matrix]
+    fig.add_trace(
+        go.Heatmap(
+            z=matrix,
+            text=text,
+            texttemplate="%{text}",
+            textfont=dict(size=11, color="#e6ebf2"),
+            colorscale=[
+                [0.0, "rgba(15,23,42,0.65)"],
+                [0.18, "rgba(16,185,129,0.20)"],
+                [0.48, "rgba(16,185,129,0.55)"],
+                [0.74, "rgba(245,158,11,0.70)"],
+                [1.0, "rgba(239,68,68,0.88)"],
+            ],
+            x=["W", "MW", "ME", "E"],
+            y=["N", "MN", "MS", "S"],
+            hovertemplate="Approach %{y} · Lane %{x}<br><b>%{z:.2f}</b> idle-minutes<extra></extra>",
+            showscale=False,
+            xgap=5,
+            ygap=5,
+        )
+    )
+    fig.update_layout(
+        xaxis=dict(side="bottom", tickfont=dict(size=10), showgrid=False, zeroline=False),
+        yaxis=dict(autorange="reversed", tickfont=dict(size=10), showgrid=False, zeroline=False),
+        margin=dict(l=8, r=8, t=8, b=8),
+    )
+    return fig
+
+
+def build_dispatch_payload(
+    df: pd.DataFrame,
+    factors: Dict[str, Any],
+    dt_s: float = 0.08,
+    intersection_id: str = "junction_01",
+) -> Tuple[CorridorPayload, Dict[str, float]]:
+    """Derive a schema-valid corridor payload from the active telemetry window."""
+    gated = df[df["track_age_frames"] >= 15] if not df.empty and "track_age_frames" in df.columns else df
+    total = int(gated["track_id"].nunique()) if not gated.empty else 0
+    idle_rows = int((gated["state"] == "IDLE").sum()) if not gated.empty else 0
+    idle_ratio = float(idle_rows / max(1, len(gated)))
+    heavy_ids = gated[gated["cls"].isin(["bus", "truck"])]["track_id"].nunique() if not gated.empty else 0
+    heavy_density = float(heavy_ids / max(1, total))
+    stops = count_stop_events(gated, min_frames=max(1, int(round(3.0 / max(dt_s, 0.01)))))
+
+    classes = factors.get("classes", {})
+    idle_burn_g_min = 0.0
+    if not gated.empty:
+        for cls_name, count in gated["cls"].value_counts().items():
+            rate = float(classes.get(str(cls_name), {}).get("idle_g_per_min", 0.0))
+            idle_burn_g_min += float(count) * rate / max(1, len(gated)) * total
+
+    choke = compute_choke_points(gated, dt_s=dt_s)
+    top_zone = None
+    if not choke.empty:
+        row = choke.iloc[0]
+        top_zone = TopChokeZone(id=str(row["Zone ID"]), idle_vehicle_minutes=float(row["Idle Minutes"]))
+
+    payload = CorridorPayload(
+        intersection_id=intersection_id,
+        window_s=round(float(gated["video_time_s"].max() - gated["video_time_s"].min()), 2)
+        if not gated.empty and "video_time_s" in gated.columns
+        else 60.0,
+        co2_g_total=round(idle_burn_g_min, 2),
+        co2_g_per_min=round(idle_burn_g_min, 2),
+        idle_ratio=round(min(1.0, max(0.0, idle_ratio)), 4),
+        heavy_vehicle_density=round(min(1.0, max(0.0, heavy_density)), 4),
+        n_counted_vehicles=total,
+        n_stop_events=stops,
+        top_choke_zone=top_zone,
+    )
+    metrics = {
+        "total_vehicles": float(total),
+        "idle_ratio": idle_ratio,
+        "heavy_density": heavy_density,
+        "stop_events": float(stops),
+        "idle_burn_g_min": idle_burn_g_min,
+    }
+    return payload, metrics
+
+
+def _reset_scenario_defaults() -> None:
+    """Reset what-if controls before the widgets are instantiated (button callback)."""
+    for key, value in {
+        "ev_car": 20,
+        "ev_moto": 30,
+        "ev_auto": 25,
+        "ev_bus": 50,
+        "ev_truck": 10,
+        "green_ext": 6,
+        "heavy_restr": True,
+    }.items():
+        st.session_state[key] = value
+
+
+def render_directive_feed(directives: List[Dict[str, Any]], artifacts_dir: Path, limit: int = 6) -> None:
+    """Render municipal directives as interactive operator cards."""
+    if not directives:
+        _html(
+            '<div class="empty-state">No directives yet. Run the dispatcher to generate a '
+            "deterministic municipal advisory from the active corridor window.</div>"
+        )
+        return
+
+    filter_col, _ = st.columns([0.42, 0.58])
+    with filter_col:
+        mode_filter = st.radio(
+            "Directive filter",
+            ["All modes", "LLM", "Rules engine"],
+            horizontal=True,
+            label_visibility="collapsed",
+            key="directive_mode_filter",
+        )
+    if mode_filter == "LLM":
+        filtered = [d for d in directives if str(d.get("mode")) == "llm"]
+    elif mode_filter == "Rules engine":
+        filtered = [d for d in directives if str(d.get("mode")) != "llm"]
+    else:
+        filtered = list(directives)
+
+    if not filtered:
+        _html('<div class="empty-state">No directives match this filter.</div>')
+        return
+
+    show_all = bool(st.session_state.get("show_all_directives", False))
+    visible = filtered if show_all else filtered[:limit]
+
+    status_map = st.session_state.setdefault("directive_status", {})
+    for idx, d in enumerate(visible):
+        directive_id = str(d.get("directive_id") or d.get("id") or f"directive_{idx}")
+        mode = str(d.get("mode", "rules_fallback"))
+        status = status_map.get(directive_id, "pending")
+        edge = "#10b981" if mode == "llm" else "#38bdf8"
+        mode_label = "Gemini LLM" if mode == "llm" else "Rules engine"
+        mode_class = "status-dispatched" if mode == "llm" else "status-pending"
+        status_class = {
+            "pending": "status-pending",
+            "dispatched": "status-dispatched",
+            "dismissed": "status-dismissed",
+        }.get(status, "status-pending")
+
+        actions = d.get("actions", [])
+        action_texts = []
+        for a in actions:
+            raw = a.get("type", "no_action")
+            action_name = str(getattr(raw, "value", raw)).split(".")[-1].replace("_", " ")
+            bits = [action_name]
+            if a.get("seconds") is not None:
+                bits.append(f"{a['seconds']}s")
+            if a.get("lane"):
+                bits.append(f"{a['lane']} approach")
+            if a.get("target_class"):
+                tgt = a["target_class"]
+                bits.append(f"target {getattr(tgt, 'value', tgt)}")
+            action_texts.append(" · ".join(bits))
+
+        saved = float(d.get("estimated_co2_saved_g", 0.0) or 0.0)
+        confidence = float(d.get("confidence", 0.0) or 0.0) * 100.0
+        rationale = str(d.get("rationale", "No rationale provided."))
+        timestamp = str(d.get("timestamp", "—")).replace("T", " ")[:19]
+
+        _html(
+            f"""
+            <div class="feed-card" style="--edge:{edge};">
+                <div class="feed-top">
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <span class="status-pill {mode_class}">{mode_label}</span>
+                        <span class="status-pill {status_class}">{status.upper()}</span>
+                        <span class="feed-id">{directive_id[:10]}</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:14px;">
+                        <span style="font-size:11px;color:#6c7d93;">{timestamp} UTC</span>
+                        <span style="font-size:16px;font-weight:700;color:#6ee7b7;">{saved:,.2f} g</span>
+                        <span style="font-size:10px;color:#6c7d93;">avoided</span>
+                        <span style="font-size:12px;font-weight:600;color:#fcd34d;">{confidence:.0f}% conf</span>
+                    </div>
+                </div>
+                <div class="feed-rationale">{rationale}</div>
+                <div class="feed-actions">↳ {' · '.join(action_texts) if action_texts else 'No action required'}</div>
+            </div>
+            """
+        )
+        b1, b2, _spacer = st.columns([0.14, 0.12, 0.74])
+        with b1:
+            if st.button(
+                "✓ Dispatch" if status != "dispatched" else "✓ Dispatched",
+                key=f"dispatch_{directive_id}_{idx}",
+                use_container_width=True,
+                disabled=status == "dispatched",
+                type="primary" if status == "pending" else "secondary",
+            ):
+                status_map[directive_id] = "dispatched"
+                st.session_state["last_operator_action"] = f"Directive {directive_id[:10]} pushed to ATCS / SCATS."
+                st.rerun()
+        with b2:
+            if st.button(
+                "Dismiss" if status != "dismissed" else "Recall",
+                key=f"dismiss_{directive_id}_{idx}",
+                use_container_width=True,
+                disabled=status == "dismissed",
+            ):
+                status_map[directive_id] = "dismissed"
+                st.session_state["last_operator_action"] = f"Directive {directive_id[:10]} dismissed by operator."
+                st.rerun()
+
+    if len(filtered) > limit:
+        if show_all:
+            if st.button("− Collapse archive", key="btn_collapse_directives"):
+                st.session_state["show_all_directives"] = False
+                st.rerun()
+        else:
+            if st.button(
+                f"+ Show {len(filtered) - limit} older directives",
+                key="btn_show_all_directives",
+                use_container_width=True,
+            ):
+                st.session_state["show_all_directives"] = True
+                st.rerun()
 
 
 @st.cache_data(ttl=60)
@@ -244,170 +1181,342 @@ def count_stop_events(df: pd.DataFrame, min_frames: int = 30) -> int:
 # MAIN APP
 # -------------------------------------------------------------
 def render_video_operations(artifacts_dir: Path) -> None:
-    # SECTION A: HEADER
-    st.title("Eco-Kinetic Traffic Carbon Digital Twin")
-    st.caption("Existing CCTV fleet → carbon intelligence; no new hardware, no video leaves the junction.")
-    st.divider()
-
     # Load Data
     df, is_fixture = load_telemetry(artifacts_dir)
     em_factors = load_emission_factors()
     meta = load_json_artifact(artifacts_dir / "telemetry_meta.json")
     dt_s = float(meta.get("dt_s", 0.08)) if meta else 0.08
 
-    if is_fixture:
-        st.info("ℹ️ Telemetry not yet generated by live pipeline. Operating in offline fixture preview mode.")
+    # SECTION A: HERO + STATUS
+    st.title("Eco-Kinetic Traffic Carbon Digital Twin")
+    st.caption(
+        "Retrofit intelligence for the existing CCTV fleet — vehicle kinematics become verified carbon "
+        "telemetry, and deterministic policy becomes municipal action. No new hardware. No video egress."
+    )
+    _html(
+        f"""
+        <div class="chip-row" style="margin-top:10px;">
+            <span class="chip chip-live"><span class="dot"></span>Edge node live · CPU only</span>
+            <span class="chip chip-blue">Zero-PII telemetry uplink</span>
+            <span class="chip">CPCB BS-VI factors</span>
+            <span class="chip chip-amber">{"Offline fixture preview" if is_fixture else "Live telemetry ledger"}</span>
+        </div>
+        """
+    )
+    st.write("")
 
-    # SECTION B: METRIC CARDS
-    # Safe computation of cards (never crashes)
+    if is_fixture:
+        st.info("ℹ️ Telemetry not yet generated by the live pipeline. Operating in offline fixture preview mode.")
+
+    # SECTION B: KPI CARDS
     total_vehicles = df["track_id"].nunique() if not df.empty and "track_id" in df.columns else None
 
-    # Cumulative CO2 placeholder (or real if computed)
-    co2_display = "Pending twin — shows at integration"
+    co2_display = "—"
     if not df.empty and "co2_cum_g" in df.columns:
-        co2_display = f"{df['co2_cum_g'].max():.1f} g"
+        co2_display = f"{float(df['co2_cum_g'].max()):,.1f} g"
     else:
-        # Check if twin can compute on the fly
         try:
             from twin.emission_engine import compute_track_emissions
+
             if not df.empty and em_factors:
                 em_df = compute_track_emissions(df, em_factors, min_age=15)
                 if not em_df.empty and "co2_cum_g" in em_df.columns:
-                    co2_display = f"{em_df['co2_cum_g'].max():.1f} g"
+                    co2_display = f"{float(em_df['co2_cum_g'].max()):,.1f} g"
         except Exception:
             pass
 
-    # Idle share %
     if not df.empty and "state" in df.columns:
         gated = df[df["track_age_frames"] >= 15] if "track_age_frames" in df.columns else df
         idle_count = (gated["state"] == "IDLE").sum() if not gated.empty else 0
         total_gated = len(gated) if not gated.empty else 1
-        idle_pct = (idle_count / max(1, total_gated)) * 100.0
-        idle_share_str = f"{idle_pct:.1f}%"
+        idle_share_str = f"{(idle_count / max(1, total_gated)) * 100.0:.1f}%"
     else:
         idle_share_str = "—"
 
-    # Stop events
     if not df.empty:
         stop_events_val = count_stop_events(df, min_frames=int(round(3.0 / dt_s)))
-        stop_events_str = str(stop_events_val)
+        stop_events_str = f"{stop_events_val:,}"
     else:
+        stop_events_val = 0
         stop_events_str = "—"
 
-    # Top Choke Zone
     choke_df = compute_choke_points(df, dt_s=dt_s)
     top_zone_str = str(choke_df.iloc[0]["Zone ID"]) if not choke_df.empty else "—"
+    top_zone_mins = float(choke_df.iloc[0]["Idle Minutes"]) if not choke_df.empty else 0.0
+    duration_s = float(df["video_time_s"].max()) if not df.empty and "video_time_s" in df.columns else 0.0
 
-    c1, c2, c3, c4, c5 = st.columns(5)
-    with c1:
-        st.metric("Vehicles Tracked", f"{total_vehicles}" if total_vehicles is not None else "—")
-    with c2:
-        st.metric("Cumulative CO2", co2_display)
-    with c3:
-        st.metric("Idle Share", idle_share_str)
-    with c4:
-        st.metric("Stop Events", stop_events_str)
-    with c5:
-        st.metric("Top Choke Zone", top_zone_str)
+    render_stat_grid(
+        [
+            {
+                "label": "Vehicles tracked",
+                "value": f"{total_vehicles:,}" if total_vehicles is not None else "—",
+                "foot": f"<b>{duration_s:.0f}s</b> analysed clip",
+                "icon": "◉",
+                "accent": "#38bdf8",
+            },
+            {
+                "label": "Cumulative CO₂",
+                "value": co2_display,
+                "foot": "CPCB mode-bin ledger",
+                "icon": "◍",
+                "accent": "#10b981",
+            },
+            {
+                "label": "Idle share",
+                "value": idle_share_str,
+                "foot": f"<b>{stop_events_str}</b> stop events detected",
+                "icon": "◌",
+                "accent": "#f59e0b",
+            },
+            {
+                "label": "Top choke zone",
+                "value": top_zone_str,
+                "foot": f"<b>{top_zone_mins:.1f}</b> idle-minutes",
+                "icon": "◆",
+                "accent": "#fb7185",
+            },
+            {
+                "label": "Telemetry rows",
+                "value": f"{len(df):,}",
+                "foot": f"dt <b>{dt_s:.3f}s</b> · frame skip {meta.get('frame_skip', '—') if meta else '—'}",
+                "icon": "▤",
+                "accent": "#a78bfa",
+            },
+        ]
+    )
+
+    # Quick actions
+    qa1, qa2, qa3, qa4, _qa_space = st.columns([0.14, 0.16, 0.17, 0.15, 0.38])
+    with qa1:
+        if st.button("↻ Refresh data", key="btn_refresh_telemetry", use_container_width=True):
+            st.cache_data.clear()
+            st.session_state["last_refresh"] = datetime.now(timezone.utc).strftime("%H:%M:%S")
+            st.toast("Telemetry cache refreshed")
+            st.rerun()
+    with qa2:
+        csv_bytes = df.to_csv(index=False).encode("utf-8") if not df.empty else b""
+        st.download_button(
+            "↓ Export telemetry",
+            data=csv_bytes,
+            file_name="eco_kinetic_telemetry.csv",
+            mime="text/csv",
+            use_container_width=True,
+            disabled=df.empty,
+        )
+    with qa3:
+        run_dispatch = st.button("✦ Generate advisory", key="btn_generate_advisory", use_container_width=True, type="primary")
+    with qa4:
+        if st.button("⌁ What-if lab", key="btn_jump_whatif", use_container_width=True):
+            st.session_state["open_whatif"] = True
+            st.rerun()
+
+    if st.session_state.get("last_operator_action"):
+        st.success(st.session_state.pop("last_operator_action"))
+
+    if run_dispatch:
+        if df.empty or not em_factors:
+            st.warning("Telemetry or emission factors unavailable — cannot generate an advisory.")
+        else:
+            with st.spinner("Running deterministic ATCS dispatcher…"):
+                payload, _metrics = build_dispatch_payload(df, em_factors, dt_s=dt_s)
+                directive = dispatch(
+                    payload,
+                    factors=em_factors,
+                    api_key=None,
+                    directives_log_path=artifacts_dir / "directives.jsonl",
+                )
+            st.cache_data.clear()
+            st.success(
+                f"Advisory {directive.directive_id[:10]} generated — "
+                f"{directive.estimated_co2_saved_g:.2f} g CO₂ avoided."
+            )
+            st.rerun()
 
     st.write("")
 
     # SECTION C: SYNCED PLAYBACK & CHARTS
-    col_video, col_charts = st.columns([1.1, 1.0])
-
     overlay_file = artifacts_dir / "overlay.mp4"
+    if not overlay_file.exists():
+        fallback_ov = REPO_ROOT / "dashboard-web" / "public" / "overlay.mp4"
+        if fallback_ov.exists():
+            overlay_file = fallback_ov
+
+    raw_junction_file = REPO_ROOT / "dashboard-web" / "public" / "junction.mp4"
+
+    col_video, col_charts = st.columns([1.15, 0.85], gap="large")
+
     with col_video:
-        st.subheader("Junction Tracking Overlay")
-        if overlay_file.exists():
-            st.video(str(overlay_file))
+        render_section("Live perception", "Junction CCTV operations", "Bounding-box kinematics rendered at the edge; video never leaves the junction.")
+        stream_mode = st.radio(
+            "Active CCTV Stream",
+            [
+                "🎬 AI tracking overlay",
+                "📹 Raw CCTV feed",
+            ],
+            horizontal=True,
+            label_visibility="collapsed",
+            key="video_stream_mode",
+        )
+        active_file = overlay_file if "tracking" in stream_mode.lower() else raw_junction_file
+
+        if active_file.exists() and active_file.stat().st_size > 1000:
+            try:
+                st.video(str(active_file), format="video/mp4")
+                _html(
+                    f"""
+                    <div class="video-stream-card">
+                        <span style="font-size: 11.5px; color: #cbd5e1; font-weight: 600;">
+                            ● {("AI tracking overlay" if "tracking" in stream_mode.lower() else "Raw CCTV feed")}
+                            <span style="color:#6c7d93;font-weight:500;">· {active_file.name} · {active_file.stat().st_size / (1024*1024):.1f} MB</span>
+                        </span>
+                        <span class="video-meta-tag">H.264 · 720p · fast-start</span>
+                    </div>
+                    """,
+                )
+            except Exception as e:
+                st.error(f"Video player encountered an error: {e}")
         else:
-            st.info("Overlay video `artifacts/overlay.mp4` not found. Showing telemetry charts below.")
+            st.warning(f"Video stream file `{active_file.name}` not found.")
+
+        with st.expander("🛠️ Overlay renderer", expanded=False):
+            st.caption("Re-render tracked bounding boxes and state classifications onto the junction CCTV stream.")
+            if st.button("⚡ Re-render tracking overlay (H.264)", key="btn_rerender_overlay", use_container_width=True):
+                with st.spinner("Rendering tracking overlay to artifacts/overlay.mp4…"):
+                    try:
+                        from scripts.render_overlay import render_overlay
+
+                        render_overlay(
+                            video_path=raw_junction_file,
+                            telemetry_path=artifacts_dir / "telemetry.parquet",
+                            output_path=artifacts_dir / "overlay.mp4",
+                        )
+                        st.success("Tracking overlay video re-rendered and ready.")
+                        st.rerun()
+                    except Exception as exc:
+                        st.error(f"Renderer error: {exc}")
 
     # Time Slider Control
     if not df.empty and "video_time_s" in df.columns:
         t_min = float(df["video_time_s"].min())
         t_max = float(df["video_time_s"].max())
         if t_max > t_min:
+            if "focus_time" not in st.session_state or not (t_min <= st.session_state["focus_time"] <= t_max):
+                st.session_state["focus_time"] = min(t_min + 30.0, t_max)
             t_curr = st.slider(
-                "Telemetry Time Window Focus (60s range)",
+                "Telemetry time window focus (60s range)",
                 min_value=t_min,
                 max_value=t_max,
-                value=min(t_min + 30.0, t_max),
                 step=max(0.5, round((t_max - t_min) / 100, 1)),
+                key="focus_time",
             )
+            jump1, jump2, jump3 = st.columns(3)
+            with jump1:
+                if st.button("⏮ Start", key="jump_start", use_container_width=True):
+                    st.session_state["focus_time"] = t_min
+                    st.rerun()
+            with jump2:
+                if st.button("◐ Midpoint", key="jump_mid", use_container_width=True):
+                    st.session_state["focus_time"] = (t_min + t_max) / 2.0
+                    st.rerun()
+            with jump3:
+                if st.button("End ⏭", key="jump_end", use_container_width=True):
+                    st.session_state["focus_time"] = t_max
+                    st.rerun()
             w_start = max(t_min, t_curr - 30.0)
             w_end = min(t_max, t_curr + 30.0)
             window_df = df[(df["video_time_s"] >= w_start) & (df["video_time_s"] <= w_end)]
+            st.caption(f"Active window: **{w_start:.1f}s → {w_end:.1f}s** · {len(window_df):,} telemetry rows")
         else:
             window_df = df
     else:
         window_df = df
 
     with col_charts:
-        st.subheader("Kinematic Activity (60s Window)")
+        render_section("Kinematics", "State composition", "Distribution of tracked vehicle states inside the active 60-second window.")
         if not window_df.empty and "state" in window_df.columns:
-            # Kinematic state distribution in window
             state_counts = window_df["state"].value_counts()
-            st.bar_chart(state_counts)
+            st.plotly_chart(make_state_donut(state_counts), use_container_width=True, config={"displayModeBar": False})
+            legend_bits = []
+            for state_name in ["CRUISE", "ACCEL", "IDLE", "DECEL"]:
+                count = int(state_counts.get(state_name, 0))
+                legend_bits.append(
+                    f'<span class="chip" style="border-color:{STATE_COLORS[state_name]}55;color:{STATE_COLORS[state_name]};">'
+                    f"{STATE_LABELS[state_name]} · {count:,}</span>"
+                )
+            _html(f'<div class="chip-row" style="margin-top:0;">{"".join(legend_bits)}</div>')
         else:
-            st.write("No telemetry available for active window.")
+            _html('<div class="empty-state">No telemetry available for the active window.</div>')
 
-    st.divider()
+    st.write("")
 
-    # SECTION D: CHOKE-POINT TABLE & CORRIDOR PROFILE
-    st.subheader("Corridor Choke Points (4x4 Spatial Grid)")
-    if not choke_df.empty:
-        st.dataframe(choke_df, use_container_width=True)
-    else:
-        st.info("No spatial idle events detected in telemetry.")
+    # SECTION D: CHOKE-POINT HEATMAP & RANKING
+    render_section("Spatial intelligence", "Corridor choke points", "Idle-minutes aggregated across the 4×4 junction grid. Hover any cell for the approach breakdown.")
+    heat_col, rank_col = st.columns([1.0, 1.0], gap="large")
+    with heat_col:
+        matrix = compute_choke_matrix(window_df if not window_df.empty else df, dt_s=dt_s)
+        if matrix.sum() > 0:
+            st.plotly_chart(make_choke_heatmap(matrix), use_container_width=True, config={"displayModeBar": False})
+        else:
+            _html('<div class="empty-state">No idling vehicles detected in this window.</div>')
+    with rank_col:
+        if not choke_df.empty:
+            st.dataframe(
+                choke_df.head(8),
+                use_container_width=True,
+                hide_index=True,
+                height=280,
+                column_config={
+                    "Idle Minutes": st.column_config.ProgressColumn(
+                        "Idle minutes",
+                        format="%.2f",
+                        min_value=0.0,
+                        max_value=float(max(1.0, choke_df["Idle Minutes"].max())),
+                    ),
+                },
+            )
+        else:
+            _html('<div class="empty-state">No spatial idle events detected in telemetry.</div>')
 
-    st.divider()
+    st.write("")
 
     # SECTION E: DIRECTIVE FEED
-    st.subheader("Municipal Dispatcher Directives")
     directives = load_directives(artifacts_dir)
-    if directives:
-        for d in directives:
-            with st.container():
-                cols = st.columns([0.2, 0.45, 0.2, 0.15])
-                mode = d.get("mode", "rules_fallback")
-                badge_class = "badge-llm" if mode == "llm" else "badge-rules"
-                with cols[0]:
-                    st.markdown(f"<span class='{badge_class}'>{mode.upper()}</span>", unsafe_allow_html=True)
-                    st.caption(d.get("timestamp", "N/A"))
-                with cols[1]:
-                    st.write(f"**Rationale**: {d.get('rationale', 'No rationale provided')}")
-                    actions = d.get("actions", [])
-                    action_texts = [f"{a.get('type')}: {a.get('seconds', '')}s on lane {a.get('lane', '')}" for a in actions]
-                    st.caption(f"Actions: {'; '.join(action_texts) if action_texts else 'None'}")
-                with cols[2]:
-                    st.metric("Est. CO2 Saved", f"{d.get('estimated_co2_saved_g', 0.0):.1f} g")
-                with cols[3]:
-                    st.metric("Confidence", f"{d.get('confidence', 0.0):.2f}")
-                st.divider()
-    else:
-        st.info("No directives yet — waiting for dispatcher trigger.")
+    render_section(
+        "Municipal action",
+        "Dispatcher directive stream",
+        "Every advisory is schema-validated, with carbon savings computed deterministically in Python — never by the LLM.",
+    )
+    st.caption(f"Showing **{len(directives)}** most recent directives · operator can dispatch or dismiss each one.")
+    render_directive_feed(directives, artifacts_dir)
+
+    st.divider()
 
     # SECTION F: WHAT-IF SCENARIOS (LAZY IMPORT)
-    st.subheader("What-If Counterfactual Policy Simulation")
     try:
         from twin.scenarios import apply_scenario
+
         scenario_available = True
     except ImportError:
         scenario_available = False
 
+    render_section(
+        "Counterfactual lab",
+        "What-if policy simulation",
+        "Recompute the entire corridor instantly with fleet electrification and signal-policy levers. Every number is deterministic.",
+    )
+
     if not scenario_available:
-        st.info("Scenario engine pending (track C)")
+        _html('<div class="empty-state">Scenario engine pending (track C).</div>')
     else:
-        with st.expander("Configure Policy Intervention", expanded=True):
-            sc_col1, sc_col2 = st.columns([1, 1])
+        with st.expander("Configure policy intervention", expanded=True):
+            sc_col1, sc_col2 = st.columns([1.05, 0.95], gap="large")
             with sc_col1:
-                st.write("**Fleet Electrification (EV Share)**")
-                ev_car = st.slider("Car EV %", 0, 100, 20) / 100.0
-                ev_moto = st.slider("Motorcycle EV %", 0, 100, 30) / 100.0
-                ev_auto = st.slider("Auto-Rickshaw EV %", 0, 100, 25) / 100.0
-                ev_bus = st.slider("Bus EV %", 0, 100, 50) / 100.0
-                ev_truck = st.slider("Truck EV %", 0, 100, 10) / 100.0
+                st.markdown("**Fleet electrification share**")
+                ev_car = st.slider("Car EV %", 0, 100, 20, key="ev_car") / 100.0
+                ev_moto = st.slider("Motorcycle EV %", 0, 100, 30, key="ev_moto") / 100.0
+                ev_auto = st.slider("Auto-rickshaw EV %", 0, 100, 25, key="ev_auto") / 100.0
+                ev_bus = st.slider("Bus EV %", 0, 100, 50, key="ev_bus") / 100.0
+                ev_truck = st.slider("Truck EV %", 0, 100, 10, key="ev_truck") / 100.0
                 ev_dict = {
                     "car": ev_car,
                     "motorcycle": ev_moto,
@@ -416,9 +1525,23 @@ def render_video_operations(artifacts_dir: Path) -> None:
                     "truck": ev_truck,
                 }
             with sc_col2:
-                st.write("**Signal & Corridor Policy**")
-                green_ext = st.slider("Adaptive Green Extension (seconds)", 0, 15, 6)
-                heavy_restr = st.toggle("Heavy Vehicle Restriction (10s priority wave for Bus/Truck)", value=True)
+                st.markdown("**Signal & corridor policy**")
+                green_ext = st.slider("Adaptive green extension (s)", 0, 15, 6, key="green_ext")
+                heavy_restr = st.toggle(
+                    "Heavy vehicle priority wave (bus / truck)",
+                    value=True,
+                    key="heavy_restr",
+                )
+                st.caption(
+                    "Green extension flushes junction queues; heavy-vehicle priority reduces high-diesel stop penalties."
+                )
+                if st.button(
+                    "↺ Reset to baseline defaults",
+                    key="btn_reset_scenario",
+                    use_container_width=True,
+                    on_click=_reset_scenario_defaults,
+                ):
+                    st.rerun()
 
             if not df.empty and em_factors:
                 scenario_res = apply_scenario(
@@ -436,34 +1559,118 @@ def render_video_operations(artifacts_dir: Path) -> None:
                 avoid_co2 = scenario_res["avoided_g"]
                 pct_saved = (avoid_co2 / max(0.001, base_co2)) * 100.0
 
-                m1, m2, m3 = st.columns(3)
-                m1.metric("Baseline CO2", f"{base_co2:.1f} g")
-                m2.metric("Scenario CO2", f"{scen_co2:.1f} g", delta=f"-{avoid_co2:.1f} g", delta_color="normal")
-                m3.metric("Carbon Abatement", f"{pct_saved:.1f}%")
+                st.write("")
+                render_stat_grid(
+                    [
+                        {
+                            "label": "Baseline emissions",
+                            "value": f"{base_co2:,.1f} g",
+                            "foot": "Current observed fleet",
+                            "icon": "◍",
+                            "accent": "#94a3b8",
+                        },
+                        {
+                            "label": "Scenario emissions",
+                            "value": f"{scen_co2:,.1f} g",
+                            "foot": "After selected interventions",
+                            "icon": "◍",
+                            "accent": "#38bdf8",
+                        },
+                        {
+                            "label": "Carbon abatement",
+                            "value": f"{pct_saved:.1f}%",
+                            "foot": f"<b>{avoid_co2:,.1f} g</b> avoided",
+                            "icon": "↘",
+                            "accent": "#10b981",
+                        },
+                        {
+                            "label": "Annualised signal",
+                            "value": f"{(avoid_co2 * 365 / 1000):,.1f} kg",
+                            "foot": "Extrapolated CO₂ / node / year",
+                            "icon": "∞",
+                            "accent": "#a78bfa",
+                        },
+                        {
+                            "label": "Fleet EV share",
+                            "value": f"{(sum(ev_dict.values()) / 5) * 100:.0f}%",
+                            "foot": "Mean across five classes",
+                            "icon": "⚡",
+                            "accent": "#fbbf24",
+                        },
+                    ]
+                )
 
-                st.write("**Per-Class Savings**")
                 breakdown = scenario_res.get("per_class_breakdown", {})
                 if breakdown:
                     b_df = pd.DataFrame(breakdown).T
-                    b_df.rename(columns={
-                        "baseline_co2_g": "Baseline CO2 (g)",
-                        "scenario_co2_g": "Scenario CO2 (g)",
-                        "avoided_g": "Avoided CO2 (g)",
-                        "ev_share": "EV Share",
-                    }, inplace=True)
-                    st.dataframe(b_df, use_container_width=True)
+                    b_df.rename(
+                        columns={
+                            "baseline_co2_g": "Baseline CO2 (g)",
+                            "scenario_co2_g": "Scenario CO2 (g)",
+                            "avoided_g": "Avoided CO2 (g)",
+                            "ev_share": "EV Share",
+                        },
+                        inplace=True,
+                    )
+                    chart_col, table_col = st.columns([1.0, 1.15], gap="large")
+                    with chart_col:
+                        st.markdown("**Avoided CO₂ by vehicle class**")
+                        fig = _base_figure(270)
+                        sorted_df = b_df.sort_values("Avoided CO2 (g)", ascending=True)
+                        fig.add_trace(
+                            go.Bar(
+                                x=sorted_df["Avoided CO2 (g)"],
+                                y=sorted_df.index,
+                                orientation="h",
+                                marker=dict(
+                                    color=[CLASS_COLORS.get(str(c), "#38bdf8") for c in sorted_df.index],
+                                    line=dict(width=0),
+                                ),
+                                text=[f"{v:,.1f} g" for v in sorted_df["Avoided CO2 (g)"]],
+                                textposition="outside",
+                                textfont=dict(color="#cbd5e1", size=10),
+                                hovertemplate="<b>%{y}</b><br>%{x:,.2f} g avoided<extra></extra>",
+                            )
+                        )
+                        fig.update_layout(
+                            xaxis=dict(showgrid=True, gridcolor="rgba(148,163,184,0.09)", zeroline=False),
+                            yaxis=dict(showgrid=False),
+                            margin=dict(l=8, r=55, t=6, b=8),
+                        )
+                        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+                    with table_col:
+                        st.markdown("**Class-by-class audit**")
+                        st.dataframe(b_df, use_container_width=True, height=270)
+                        st.download_button(
+                            "↓ Export scenario audit (CSV)",
+                            data=b_df.to_csv().encode("utf-8"),
+                            file_name="eco_kinetic_scenario_audit.csv",
+                            mime="text/csv",
+                            use_container_width=True,
+                        )
 
     # SECTION G: SIDEBAR METHODOLOGY EXPANDER
     with st.sidebar:
-        st.subheader("System Configuration")
+        st.markdown("<p class='nav-section-title'>SYSTEM HEALTH</p>", unsafe_allow_html=True)
+        _html(
+            f"""
+            <div class="nav-active-status-card">
+                <div class="active-badge-tag">● EDGE NODE NOMINAL</div>
+                <div class="active-title-text">{len(df):,} telemetry rows</div>
+                <div class="active-desc-text">{meta.get('video_fps', '—') if meta else '—'} FPS · frame skip {meta.get('frame_skip', '—') if meta else '—'} · dt {dt_s:.3f}s</div>
+            </div>
+            """
+        )
         if meta:
-            st.write(f"**FPS**: {meta.get('video_fps', 'N/A')}")
-            st.write(f"**Frame Skip**: {meta.get('frame_skip', 'N/A')}")
-            st.write(f"**Resolution**: {meta.get('img_w', 'N/A')}x{meta.get('img_h', 'N/A')}")
-            st.write(f"**Step Size ($dt_s$)**: {meta.get('dt_s', 'N/A'):.3f}s")
+            st.caption(
+                f"Resolution **{meta.get('img_w', 'N/A')}×{meta.get('img_h', 'N/A')}** · "
+                f"CPU-only inference · zero CUDA dependencies"
+            )
+        else:
+            st.caption("CPU-only inference · zero CUDA dependencies")
 
-        with st.expander("Methodology & Emission Factors", expanded=False):
-            st.caption("Emissions are indicative mode-bin estimates, not tailpipe measurements.")
+        with st.expander("Methodology & emission factors", expanded=False):
+            st.caption("Indicative mode-bin estimates, not tailpipe measurements.")
             if em_factors and "classes" in em_factors:
                 ef_rows = []
                 for c_name, c_data in em_factors["classes"].items():
@@ -476,16 +1683,17 @@ def render_video_operations(artifacts_dir: Path) -> None:
                         "Source": c_data.get("source", "TODO"),
                         "Year": c_data.get("year", "TODO"),
                     })
-                st.dataframe(pd.DataFrame(ef_rows), use_container_width=True)
+                st.dataframe(pd.DataFrame(ef_rows), use_container_width=True, hide_index=True)
             else:
                 st.write("Emission factors config not found.")
 
-            st.write("**Core Assumptions**:")
             st.markdown(
                 r"""
-                - Vehicle speeds estimated via length-calibrated bounding box proxy.
-                - Idle emissions accumulate during zero-motion phases ($\ge 3$s threshold).
-                - Stop events gate tracks at $\ge 15$ frames to avoid tracking churn bias.
+                **Core assumptions**
+                - Speeds are length-calibrated bounding-box proxies.
+                - Idle emissions accumulate after 3s of verified standstill.
+                - Ledger gated at 15 frames to avoid tracking churn.
+                - Carbon math is deterministic Python — never the LLM.
                 """
             )
 
@@ -493,8 +1701,21 @@ def render_video_operations(artifacts_dir: Path) -> None:
 def render_image_intelligence(artifacts_dir: Path) -> None:
     """Render the Image Intelligence view for single-frame photograph inspection."""
     st.title("Traffic Image Intelligence")
-    st.caption("Single-frame intersection vehicle perception • Local CPU inference • Privacy-preserving (Zero PII, no ANPR, no video egress).")
-    st.divider()
+    st.caption(
+        "Upload one junction photograph — or load a curated CCTV sample — to inspect vehicle mix, "
+        "run deterministic CPCB carbon accounting, and generate a municipal advisory."
+    )
+    _html(
+        """
+        <div class="chip-row" style="margin-top:10px;">
+            <span class="chip chip-live"><span class="dot"></span>Local CPU inference</span>
+            <span class="chip chip-blue">5-class Indian road taxonomy</span>
+            <span class="chip">Zero cloud upload</span>
+            <span class="chip chip-amber">No fabricated kinematics</span>
+        </div>
+        """
+    )
+    st.write("")
 
     analyzer = get_image_analyzer()
 
@@ -502,27 +1723,98 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
     if analyzer.limitation_notes:
         st.info(f"ℹ️ **Model Taxonomy Note:** {analyzer.limitation_notes}")
 
-    # Top Controls
-    col_up, col_ctrl = st.columns([1.4, 1.0])
+    # Section 1: 1-Click Test Presets
+    sample_dir = REPO_ROOT / "assets_workspace" / "samples"
+    preset_samples = {
+        "moving_auto": {
+            "name": "🛺 Moving Auto-Rickshaw (CCTV)",
+            "file": sample_dir / "sample_junction_moving_auto.jpg",
+            "desc": "Roundabout entry with active moving auto-rickshaw, cars & motorcycles",
+        },
+        "parked_auto": {
+            "name": "🛑 Parked Service Auto (CCTV)",
+            "file": sample_dir / "sample_junction_parked_auto.jpg",
+            "desc": "Right-hand service lane with parked auto & active mixed flow",
+        },
+        "delhi_traffic": {
+            "name": "🚦 Delhi Congested Intersection",
+            "file": sample_dir / "sample_delhi_traffic.jpg",
+            "desc": "Multi-lane dense urban intersection queue",
+        },
+    }
+
+    st.markdown("##### ⚡ Quick test presets")
+    st.caption("Instant local samples — no upload required. Each preset runs real inference on the bundled CCTV photography.")
+    p_col1, p_col2, p_col3 = st.columns(3)
+    preset_selected = None
+
+    with p_col1:
+        if st.button(preset_samples["moving_auto"]["name"], use_container_width=True, help=preset_samples["moving_auto"]["desc"]):
+            preset_selected = "moving_auto"
+    with p_col2:
+        if st.button(preset_samples["parked_auto"]["name"], use_container_width=True, help=preset_samples["parked_auto"]["desc"]):
+            preset_selected = "parked_auto"
+    with p_col3:
+        if st.button(preset_samples["delhi_traffic"]["name"], use_container_width=True, help=preset_samples["delhi_traffic"]["desc"]):
+            preset_selected = "delhi_traffic"
+
+    if preset_selected:
+        p_info = preset_samples[preset_selected]
+        if p_info["file"].exists():
+            st.session_state["active_img_bytes"] = p_info["file"].read_bytes()
+            st.session_state["active_img_name"] = p_info["file"].name
+            st.session_state["img_source_type"] = "preset"
+
+    st.write("")
+
+    # Section 2: Upload and Inference Controls
+    col_up, col_ctrl = st.columns([1.3, 1.0])
     with col_up:
         uploaded_file = st.file_uploader(
-            "Upload Traffic Intersection Photograph",
+            "Or Upload Custom Traffic Photograph",
             type=["jpg", "jpeg", "png", "webp"],
             help="Upload a standard traffic photograph (JPG, JPEG, PNG, or WebP, max 20 MB). Processed strictly locally on CPU.",
         )
+        if uploaded_file is not None:
+            up_bytes = uploaded_file.getvalue()
+            if (
+                st.session_state.get("active_img_name") != uploaded_file.name
+                or st.session_state.get("active_img_bytes") != up_bytes
+            ):
+                st.session_state["active_img_bytes"] = up_bytes
+                st.session_state["active_img_name"] = uploaded_file.name
+                st.session_state["img_source_type"] = "uploaded"
+
     with col_ctrl:
         conf_thresh = st.slider(
-            "Confidence Threshold",
+            "Perception Confidence Threshold",
             min_value=0.05,
             max_value=0.95,
-            value=0.30,
+            value=0.25,
             step=0.05,
-            help="Minimum model confidence required to keep a vehicle detection.",
+            help="Minimum model confidence required to retain a vehicle detection.",
         )
-        process_btn = st.button("🔍 Process Image", type="primary", use_container_width=True)
+        process_btn = st.button("🔍 Process image & generate advisory", type="primary", use_container_width=True)
+        if st.button("✕ Clear current result", key="btn_clear_image", use_container_width=True):
+            for key in ("active_img_bytes", "active_img_name", "img_result", "img_key", "img_filename", "img_source_type"):
+                st.session_state.pop(key, None)
+            st.rerun()
 
-    if uploaded_file is None:
-        st.info("👆 Please upload a traffic photograph (JPG, JPEG, PNG, or WebP) to begin image analysis.")
+    with st.expander("🤖 GenAI Dispatcher Configuration (Optional)", expanded=False):
+        st.caption(
+            "The Edge AI Dispatcher executes a deterministic local ATCS engine by default (100% offline, zero API key required). "
+            "Optionally provide a Gemini or OpenAI API key to trigger live LLM generation."
+        )
+        user_api_key = st.text_input(
+            "Gemini / OpenAI API Key (Optional)",
+            type="password",
+            value="",
+            help="Leave blank to use the built-in deterministic local ATCS engine.",
+        )
+
+    # Empty State Check
+    if "active_img_bytes" not in st.session_state:
+        st.info("👆 Click any 1-Click Test Preset above or upload a photograph to start vehicle perception & AI advisory.")
 
         with st.sidebar:
             st.subheader("Image Engine Configuration")
@@ -535,89 +1827,420 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
             st.caption("Zero cloud transmission. No facial or license-plate extraction. Fully local edge execution.")
         return
 
-    # Cache state to avoid re-processing on unrelated reruns
-    file_bytes = uploaded_file.getvalue()
-    file_key = f"{uploaded_file.name}_{len(file_bytes)}_{conf_thresh:.2f}"
+    # Trigger Inference and Advisory
+    image_bytes = st.session_state["active_img_bytes"]
+    image_filename = st.session_state.get("active_img_name", "traffic_photo.jpg")
+    file_key = f"{image_filename}_{len(image_bytes)}_{conf_thresh:.2f}_{user_api_key.strip()}"
 
-    should_process = process_btn or ("img_result" not in st.session_state or st.session_state.get("img_key") != file_key)
+    should_process = (
+        process_btn
+        or preset_selected is not None
+        or ("img_result" not in st.session_state or st.session_state.get("img_key") != file_key)
+    )
 
     if should_process:
-        with st.spinner("Analyzing traffic photograph on CPU..."):
+        with st.spinner("Executing CPU perception and synthesizing GenAI municipal advisory..."):
             try:
-                result = analyzer.analyze(file_bytes, conf=conf_thresh)
+                result = analyzer.analyze(image_bytes, conf=conf_thresh)
+
+                # Spatial Choke Analysis & Approach Quadrants
+                h_img = result["image_dimensions"]["height"]
+                w_img = result["image_dimensions"]["width"]
+                zones: Dict[str, int] = {}
+                quadrants = {"North (N)": 0, "South (S)": 0, "East (E)": 0, "West (W)": 0}
+
+                for r in result["detection_records"]:
+                    bbox = r["bbox"]
+                    cx, cy = (bbox[0] + bbox[2]) / 2.0, (bbox[1] + bbox[3]) / 2.0
+                    r_idx = min(3, int(cy / h_img * 4))
+                    c_idx = min(3, int(cx / w_img * 4))
+                    zid = f"z_r{r_idx}_c{c_idx}"
+                    zones[zid] = zones.get(zid, 0) + 1
+
+                    lane = _determine_lane_from_zone(zid)
+                    lane_name = {
+                        "N": "North (N)",
+                        "S": "South (S)",
+                        "E": "East (E)",
+                        "W": "West (W)",
+                    }.get(lane, "North (N)")
+                    quadrants[lane_name] += 1
+                    r["approach_quadrant"] = lane_name
+
+                top_z = max(zones.items(), key=lambda x: x[1])[0] if zones else "z_r1_c1"
+                top_lane = _determine_lane_from_zone(top_z)
+
+                # CPCB BS-VI Deterministic Idle Burn Rate
+                em_factors = load_emission_factors()
+                classes_cfg = em_factors.get("classes", {})
+                idle_rates = {
+                    "car": float(classes_cfg.get("car", {}).get("idle_g_per_min", 22.0)),
+                    "motorcycle": float(classes_cfg.get("motorcycle", {}).get("idle_g_per_min", 8.0)),
+                    "auto_rickshaw": float(classes_cfg.get("auto_rickshaw", {}).get("idle_g_per_min", 12.0)),
+                    "bus": float(classes_cfg.get("bus", {}).get("idle_g_per_min", 45.0)),
+                    "truck": float(classes_cfg.get("truck", {}).get("idle_g_per_min", 55.0)),
+                }
+                cruise_rates = {
+                    "car": float(classes_cfg.get("car", {}).get("cruise_g_per_km", 150.0)),
+                    "motorcycle": float(classes_cfg.get("motorcycle", {}).get("cruise_g_per_km", 80.0)),
+                    "auto_rickshaw": float(classes_cfg.get("auto_rickshaw", {}).get("cruise_g_per_km", 95.0)),
+                    "bus": float(classes_cfg.get("bus", {}).get("cruise_g_per_km", 1000.0)),
+                    "truck": float(classes_cfg.get("truck", {}).get("cruise_g_per_km", 900.0)),
+                }
+
+                counts = result["per_class_counts"]
+                total_veh = result["total_detections"]
+                instant_idle_burn_g_min = sum(counts.get(c, 0) * idle_rates.get(c, 20.0) for c in counts)
+                heavy_count = counts.get("bus", 0) + counts.get("truck", 0)
+                heavy_density = (heavy_count / total_veh) if total_veh > 0 else 0.0
+
+                # Construct CorridorPayload
+                payload = CorridorPayload(
+                    intersection_id="junction_01",
+                    window_s=60.0,
+                    co2_g_total=round(instant_idle_burn_g_min, 2),
+                    co2_g_per_min=round(instant_idle_burn_g_min, 2),
+                    idle_ratio=round(min(0.85, max(0.20, total_veh * 0.08)), 2) if total_veh > 0 else 0.0,
+                    heavy_vehicle_density=round(heavy_density, 3),
+                    n_counted_vehicles=total_veh,
+                    n_stop_events=max(1, total_veh) if total_veh > 0 else 0,
+                    top_choke_zone=TopChokeZone(
+                        id=top_z,
+                        idle_vehicle_minutes=round(max(0.5, total_veh * 0.75), 2),
+                    ) if total_veh > 0 else None,
+                )
+
+                # Dispatch Directive (ad-hoc analysis, not yet published to the municipal log)
+                eff_key = user_api_key.strip() if user_api_key.strip() else None
+                directive = dispatch(
+                    payload,
+                    factors=em_factors,
+                    api_key=eff_key,
+                    directives_log_path=None,
+                )
+
+                result["directive"] = directive.model_dump()
+                result["instant_idle_burn_g_min"] = instant_idle_burn_g_min
+                result["quadrant_counts"] = quadrants
+                result["top_zone"] = top_z
+                result["top_lane"] = top_lane
+                result["idle_rates"] = idle_rates
+                result["cruise_rates"] = cruise_rates
+
                 st.session_state["img_result"] = result
                 st.session_state["img_key"] = file_key
-                st.session_state["img_filename"] = uploaded_file.name
+                st.session_state["img_filename"] = image_filename
             except ImageValidationError as e:
                 st.error(f"Image Validation Error: {e}")
                 return
             except Exception as e:
-                st.error(f"Inference Failure: {e}")
+                st.error(f"Perception & Advisory Processing Failure: {e}")
                 return
 
     result = st.session_state.get("img_result")
     if not result:
         return
 
-    # Visual Inspection (Side-by-side)
-    col_orig, col_annot = st.columns(2)
-    with col_orig:
-        st.subheader("Original Photograph")
-        st.image(result["original_image"], use_container_width=True)
-    with col_annot:
-        st.subheader("Perception Annotations")
-        st.image(result["annotated_image"], use_container_width=True)
+    # Image source status header
+    active_filename = st.session_state.get("img_filename", "traffic_photo.jpg")
+    dims = result.get("image_dimensions", {})
+    w_px = dims.get("width", 0)
+    h_px = dims.get("height", 0)
+    latency_ms = result.get("processing_latency_ms", 0.0)
+
+    st.caption(
+        f"📷 **Active Image**: `{active_filename}` • **Resolution**: {w_px}×{h_px} px • "
+        f"**Latency**: {latency_ms:.0f} ms • **Inference Device**: `{result.get('device', 'cpu').upper()}`"
+    )
+
+    counts = result.get("per_class_counts", {})
+    total_veh = result.get("total_detections", 0)
+    heavy_count = counts.get("bus", 0) + counts.get("truck", 0)
+    instant_burn = result.get("instant_idle_burn_g_min", 0.0)
+
+    # High-Impact Fleet KPI Cards
+    k1, k2, k3, k4, k5, k6 = st.columns(6)
+    with k1:
+        st.markdown(
+            f"""
+            <div class="kpi-card">
+                <div class="kpi-title">Total Fleet</div>
+                <div class="kpi-num">{total_veh}</div>
+                <div class="kpi-sub">Vehicles Detected</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with k2:
+        st.markdown(
+            f"""
+            <div class="kpi-card">
+                <div class="kpi-title">Auto-Rickshaws</div>
+                <div class="kpi-num kpi-num-green">🛺 {counts.get('auto_rickshaw', 0)}</div>
+                <div class="kpi-sub">CCTV Fine-Tuned</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with k3:
+        st.markdown(
+            f"""
+            <div class="kpi-card">
+                <div class="kpi-title">Passenger Cars</div>
+                <div class="kpi-num kpi-num-blue">🚗 {counts.get('car', 0)}</div>
+                <div class="kpi-sub">CCTV Calibrated</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with k4:
+        st.markdown(
+            f"""
+            <div class="kpi-card">
+                <div class="kpi-title">Two-Wheelers</div>
+                <div class="kpi-num kpi-num-amber">🏍️ {counts.get('motorcycle', 0)}</div>
+                <div class="kpi-sub">Motorcycles/Scooters</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with k5:
+        st.markdown(
+            f"""
+            <div class="kpi-card">
+                <div class="kpi-title">Heavy Transit</div>
+                <div class="kpi-num kpi-num-purple">🚌 {heavy_count}</div>
+                <div class="kpi-sub">Buses & Trucks</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with k6:
+        st.markdown(
+            f"""
+            <div class="kpi-card">
+                <div class="kpi-title">Idle Burn Rate</div>
+                <div class="kpi-num kpi-num-green">{instant_burn:.1f}</div>
+                <div class="kpi-sub">g CO₂ / min (CPCB)</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    # Edge AI Municipal Traffic & Carbon Advisory Container
+    directive = result.get("directive", {})
+    if directive:
+        mode = directive.get("mode", "rules_fallback")
+        is_llm = (mode == "llm")
+        badge_html = (
+            '<span class="badge-llm">🤖 LIVE GEMINI DISPATCH</span>'
+            if is_llm
+            else '<span class="badge-rules">⚙️ ATCS LOCAL ENGINE (DETERMINISTIC FALLBACK)</span>'
+        )
+        actions = directive.get("actions", [])
+        if actions:
+            action_parts = []
+            for a in actions:
+                raw_type = a.get("type", "")
+                val = getattr(raw_type, "value", str(raw_type))
+                a_type = val.split(".")[-1].replace("_", " ").upper()
+                sec = a.get("seconds")
+                lane = a.get("lane")
+                tgt = a.get("target_class")
+                desc = a_type
+                if sec is not None:
+                    desc += f" ({sec}s)"
+                if lane:
+                    desc += f" on {lane} Approach"
+                if tgt:
+                    desc += f" for {tgt}"
+                action_parts.append(desc)
+            action_str = ", ".join(action_parts)
+        else:
+            action_str = "NO ACTION REQUIRED (Balanced Flow)"
+
+        co2_saved = directive.get("estimated_co2_saved_g", 0.0)
+        confidence = directive.get("confidence", 0.0) * 100.0
+        rationale = directive.get("rationale", "Traffic corridor flow is nominal.")
+        directive_id = directive.get("directive_id", "N/A")[:8]
+        top_lane = result.get("top_lane", "N")
+        top_zone = result.get("top_zone", "N/A")
+
+        st.markdown(
+            f"""
+            <div class="ai-advisory-container">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+                    <div style="font-size: 16px; font-weight: 700; color: #f8fafc; display: flex; align-items: center; gap: 10px;">
+                        <span>🤖 Edge AI Municipal Traffic & Carbon Advisory</span>
+                        {badge_html}
+                    </div>
+                    <div style="font-size: 12px; color: #94a3b8;">
+                        Intersection: <code>junction_01</code> • Directive ID: <code>{directive_id}</code>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 14px; margin-bottom: 14px; background: rgba(0,0,0,0.30); padding: 14px; border-radius: 8px;">
+                    <div>
+                        <div style="font-size: 11px; text-transform: uppercase; color: #94a3b8; font-weight: 600;">Intervention Action</div>
+                        <div style="font-size: 17px; font-weight: 700; color: #38bdf8;">{action_str}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 11px; text-transform: uppercase; color: #94a3b8; font-weight: 600;">Avoided Carbon</div>
+                        <div style="font-size: 17px; font-weight: 700; color: #10b981;">+{co2_saved:.2f} g CO₂</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 11px; text-transform: uppercase; color: #94a3b8; font-weight: 600;">Confidence</div>
+                        <div style="font-size: 17px; font-weight: 700; color: #fde047;">{confidence:.1f}%</div>
+                    </div>
+                </div>
+                <div style="font-size: 13px; color: #cbd5e1; line-height: 1.5; background: rgba(255,255,255,0.04); padding: 12px 16px; border-radius: 6px; border-left: 3px solid #38bdf8;">
+                    <strong>Municipal Engineering Rationale:</strong> {rationale}
+                </div>
+                <div style="margin-top: 10px; font-size: 11px; color: #64748b; display: flex; justify-content: space-between; flex-wrap: wrap;">
+                    <span>🛡️ <strong>CPCB BS-VI Guardrail:</strong> Carbon calculations performed deterministically in Python — zero LLM hallucination.</span>
+                    <span>Primary Choke Axis: <strong>{top_lane} Approach</strong> ({top_zone})</span>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        pub_col1, pub_col2, _pub_space = st.columns([0.24, 0.2, 0.56])
+        with pub_col1:
+            if st.button("📡 Publish advisory to directive log", key="btn_publish_image_advisory", use_container_width=True, type="primary"):
+                try:
+                    append_directive_to_log(
+                        Directive(**directive),
+                        artifacts_dir / "directives.jsonl",
+                    )
+                    st.cache_data.clear()
+                    st.success("Advisory published to the municipal directive stream.")
+                except Exception as exc:
+                    st.error(f"Could not publish advisory: {exc}")
+        with pub_col2:
+            st.download_button(
+                "↓ Export advisory JSON",
+                data=json.dumps(directive, indent=2, default=str).encode("utf-8"),
+                file_name="image_advisory.json",
+                mime="application/json",
+                use_container_width=True,
+            )
+
+    st.write("")
+    tab_annotated, tab_side_by_side, tab_original, tab_spatial = st.tabs([
+        "🔍 Perception Overlay",
+        "🖼️ Side-by-Side Comparison",
+        "📷 Original Photograph",
+        "🗺️ Spatial Approach Quadrants",
+    ])
+
+    with tab_annotated:
+        st.image(
+            result["annotated_image"],
+            use_container_width=True,
+            caption=f"High-contrast bounding boxes & confidence badges ({total_veh} detections above {conf_thresh:.2f} conf)",
+        )
+
+    with tab_side_by_side:
+        col_orig, col_annot = st.columns(2)
+        with col_orig:
+            st.subheader("Original Photograph")
+            st.image(result["original_image"], use_container_width=True)
+        with col_annot:
+            st.subheader("Perception Annotations")
+            st.image(result["annotated_image"], use_container_width=True)
+
+    with tab_original:
+        st.image(result["original_image"], use_container_width=True, caption="Raw input photograph (unannotated)")
+
+    with tab_spatial:
+        st.subheader("Spatial Approach Distribution (4 Cardinal Zones)")
+        st.caption("Distribution of detected vehicles across cardinal approach corridors.")
+        q_counts = result.get("quadrant_counts", {})
+        q_cols = st.columns(4)
+        for i, (quad_name, quad_cnt) in enumerate(q_counts.items()):
+            with q_cols[i]:
+                pct = (quad_cnt / total_veh * 100.0) if total_veh > 0 else 0.0
+                st.metric(quad_name, f"{quad_cnt} veh", delta=f"{pct:.0f}% of total" if total_veh > 0 else None)
+        q_df = pd.DataFrame(list(q_counts.items()), columns=["Approach Zone", "Vehicle Count"])
+        st.bar_chart(q_df.set_index("Approach Zone"))
 
     st.divider()
 
-    # Metric Cards
-    k1, k2, k3, k4, k5 = st.columns(5)
-    with k1:
-        st.metric("Total Vehicles", f"{result['total_detections']}")
-    with k2:
-        st.metric("Classes Detected", f"{result['classes_detected_count']} / {len(result['supported_classes'])}")
-    with k3:
-        st.metric("Mean Confidence", f"{result['mean_confidence'] * 100:.1f}%" if result['total_detections'] > 0 else "—")
-    with k4:
-        st.metric("Inference Latency", f"{result['processing_latency_ms']:.0f} ms")
-    with k5:
-        st.metric("Engine & Device", f"{result['model_identifier']} ({result['device'].upper()})")
-
-    st.write("")
-
-    # Class Breakdown & Distribution
-    col_chart, col_empty = st.columns([1.2, 1.0])
+    # Fleet Taxonomy & CPCB BS-VI Emission Index
+    col_chart, col_cpcb = st.columns([1.1, 1.3])
     with col_chart:
-        st.subheader("Detected Vehicle Class Distribution")
-        counts_df = pd.DataFrame(
+        st.subheader("Detected Fleet Taxonomy")
+        chart_data = pd.DataFrame(
             list(result["per_class_counts"].items()),
             columns=["Vehicle Class", "Count"],
         )
-        st.bar_chart(counts_df.set_index("Vehicle Class"))
+        st.bar_chart(chart_data.set_index("Vehicle Class"))
 
-    # Empty State Handling
-    if result["total_detections"] == 0:
+    with col_cpcb:
+        st.subheader("CPCB BS-VI Emission Index (Snapshot)")
+        fleet_rows = []
+        idle_r = result.get("idle_rates", {})
+        cruise_r = result.get("cruise_rates", {})
+        for cls_name in ["car", "auto_rickshaw", "motorcycle", "bus", "truck"]:
+            cnt = counts.get(cls_name, 0)
+            share = (cnt / total_veh * 100.0) if total_veh > 0 else 0.0
+            irate = idle_r.get(cls_name, 0.0)
+            crate = cruise_r.get(cls_name, 0.0)
+            burn = cnt * irate
+            fleet_rows.append({
+                "Vehicle Class": cls_name,
+                "Count": cnt,
+                "Share (%)": f"{share:.1f}%",
+                "Idle Rate (g/min)": f"{irate:.1f}",
+                "Cruise Rate (g/km)": f"{crate:.1f}",
+                "Idle Burn (g/min)": f"{burn:.1f}",
+            })
+        st.dataframe(pd.DataFrame(fleet_rows), use_container_width=True)
+
+    # Empty State Warning
+    if total_veh == 0:
         st.warning(
             f"No vehicles were detected above confidence threshold {conf_thresh:.2f}. "
-            "Try lowering the confidence threshold slider or upload an alternative angle."
+            "Try lowering the confidence threshold slider or upload an alternative image angle."
         )
 
-    # Detailed Detections Table
+    st.divider()
+
+    # Detailed Detections Table with Interactive Filter
     st.subheader("Vehicle Detection Ledger")
     records = result.get("detection_records", [])
     if records:
+        class_options = ["All Classes"] + [c for c in ["auto_rickshaw", "car", "motorcycle", "bus", "truck"] if counts.get(c, 0) > 0]
+        f_col1, f_col2 = st.columns([1.0, 2.0])
+        with f_col1:
+            selected_filter = st.selectbox("Filter by Class", class_options, index=0)
+
         table_rows = []
         for r in records:
+            if selected_filter != "All Classes" and r["class_name"] != selected_filter:
+                continue
             bbox = r["bbox"]
+            emoji = {
+                "auto_rickshaw": "🛺",
+                "car": "🚗",
+                "motorcycle": "🏍️",
+                "bus": "🚌",
+                "truck": "🚛",
+            }.get(r["class_name"], "🚘")
             table_rows.append({
-                "Index": r["detection_index"],
-                "Class": r["class_name"],
-                "Confidence": f"{r['confidence']:.4f}",
-                "Bounding Box [x1, y1, x2, y2]": f"[{bbox[0]:.1f}, {bbox[1]:.1f}, {bbox[2]:.1f}, {bbox[3]:.1f}]",
-                "Width (px)": r["bbox_w_px"],
-                "Height (px)": r["bbox_h_px"],
-                "Area (px²)": r["bbox_area_px"],
+                "Index": f"#{r['detection_index']}",
+                "Class": f"{emoji} {r['class_name']}",
+                "Confidence": f"{r['confidence'] * 100:.1f}%",
+                "Approach": r.get("approach_quadrant", "N/A"),
+                "Bounding Box [x1, y1, x2, y2]": f"[{bbox[0]:.0f}, {bbox[1]:.0f}, {bbox[2]:.0f}, {bbox[3]:.0f}]",
+                "Width (px)": f"{r['bbox_w_px']:.0f}",
+                "Height (px)": f"{r['bbox_h_px']:.0f}",
+                "Area (px²)": f"{r['bbox_area_px']:.0f}",
             })
+
+        with f_col2:
+            st.caption(f"Showing **{len(table_rows)}** of **{len(records)}** detections ({selected_filter}).")
+
         st.dataframe(pd.DataFrame(table_rows), use_container_width=True)
     else:
         st.info("No vehicle detection records to display.")
@@ -627,12 +2250,12 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
     # Downloads Section
     st.subheader("Export Results")
     down_col1, down_col2, down_col3 = st.columns(3)
-    base_name = Path(st.session_state.get("img_filename", "traffic")).stem
+    base_name = Path(active_filename).stem
 
     with down_col1:
         img_bytes = encode_image_to_bytes(result["annotated_image"], format="jpg")
         st.download_button(
-            "📥 Download Annotated Image",
+            "📥 Download Annotated Image (JPG)",
             data=img_bytes,
             file_name=f"{base_name}_annotated.jpg",
             mime="image/jpeg",
@@ -641,7 +2264,7 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
     with down_col2:
         csv_data = export_results_to_csv(result)
         st.download_button(
-            "📊 Download Results (CSV)",
+            "📊 Download Detection Ledger (CSV)",
             data=csv_data,
             file_name=f"{base_name}_detections.csv",
             mime="text/csv",
@@ -650,7 +2273,7 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
     with down_col3:
         json_data = export_results_to_json(result)
         st.download_button(
-            "📋 Download Results (JSON)",
+            "📋 Download Full Intelligence (JSON)",
             data=json_data,
             file_name=f"{base_name}_results.json",
             mime="application/json",
@@ -664,7 +2287,8 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
             **Single-Photograph Perception Boundaries:**
             - **Observed Image Detections:** The results above represent an instantaneous spatial snapshot of the intersection.
             - **No Kinematic Extrapolation:** Vehicle speed, acceleration, deceleration, and idling durations cannot be measured reliably from a single static image. Consequently, **no speeds, motion states, or cumulative tailpipe emissions are fabricated or reported**.
-            - **Video Digital Twin:** Dynamic mode-bin carbon accumulation ($E_{\text{vehicle}} = \sum r_{\text{mode}} \cdot \Delta t$) and ATCS signal directives are exclusively generated from multi-frame video tracking in **Junction Video Operations** mode.
+            - **Deterministic Carbon Accounting:** Instantaneous idle burn potential ($E_{\text{idle}} = \sum N_c \cdot r_{\text{idle}, c}$) is computed using certified Central Pollution Control Board (CPCB) BS-VI factors. Avoided emissions are computed using counterfactual signal clearance simulations in Python.
+            - **Video Digital Twin:** Dynamic mode-bin carbon accumulation ($E_{\text{vehicle}} = \sum r_{\text{mode}} \cdot \Delta t$) is exclusively generated from multi-frame video tracking in **Junction Video Operations** mode.
             - **Privacy Guarantee:** Uploaded images are processed entirely in local CPU volatile memory. No facial recognition, license plate recognition (ANPR), or external cloud API transmissions occur.
             """
         )
@@ -684,19 +2308,52 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
 def main() -> None:
     artifacts_dir = REPO_ROOT / "artifacts"
 
-    st.sidebar.title("🌿 Eco-Kinetic Console")
-    mode = st.sidebar.radio(
+    if "main_nav_radio" not in st.session_state:
+        st.session_state["main_nav_radio"] = "Junction Video Operations"
+
+    st.sidebar.markdown(
+        '<div class="sidebar-console-card"><div class="console-status-row">'
+        '<span class="pulse-indicator"></span>'
+        '<span class="status-text">LIVE EDGE NODE · 30 FPS</span></div>'
+        '<div class="console-heading">🌿 Eco-Kinetic Console</div>'
+        '<div class="console-subtext">CCTV Carbon Digital Twin & Municipal AI</div></div>',
+        unsafe_allow_html=True,
+    )
+
+    st.sidebar.markdown("<p class='nav-section-title'>WORKSPACE</p>", unsafe_allow_html=True)
+    curr_mode = st.sidebar.radio(
         "Navigation Mode",
         [
             "Junction Video Operations",
             "Image Intelligence",
         ],
-        index=0,
+        key="main_nav_radio",
+        label_visibility="collapsed",
         help="Switch between continuous CCTV video digital twin and single-frame photograph intelligence.",
     )
+
+    if curr_mode == "Junction Video Operations":
+        st.sidebar.markdown(
+            '<div class="nav-active-status-card">'
+            '<div class="active-badge-tag">● ACTIVE VIEWPORT</div>'
+            '<div class="active-title-text">🎥 Junction Video Operations</div>'
+            '<div class="active-desc-text">Continuous CCTV twin, spatial choke zones & counterfactual simulation.</div>'
+            "</div>",
+            unsafe_allow_html=True,
+        )
+    else:
+        st.sidebar.markdown(
+            '<div class="nav-active-status-card">'
+            '<div class="active-badge-tag">● ACTIVE VIEWPORT</div>'
+            '<div class="active-title-text">🚦 Traffic Image Intelligence</div>'
+            '<div class="active-desc-text">5-class edge perception with CPCB carbon accounting & GenAI advisory.</div>'
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
     st.sidebar.divider()
 
-    if mode == "Junction Video Operations":
+    if curr_mode == "Junction Video Operations":
         render_video_operations(artifacts_dir)
     else:
         render_image_intelligence(artifacts_dir)

@@ -153,7 +153,7 @@ This project retrofits existing municipal CCTV traffic camera fleets into a real
 ### ✅ M7 — Complete Documentation, Architecture & Deployment Topology
 - **Comprehensive README:** Full rewrite of `README.md` featuring Mermaid architecture diagram, CLI quickstart, Edge $\rightarrow$ ICCC deployment topology, CPCB/ARAI BS-VI equations, mode-bin formulas, strict privacy statement (zero PII, no ANPR, edge-only RAM inference), and known limitations.
 - **Hygiene & Artifacts:** `.env` gitignored, `.env.example` committed, large `.mp4` binaries excluded from git tracking, realistic dual-mode fallback directives pre-populated in `artifacts/directives.jsonl`.
-- **Test Suite Health:** **54/54 Golden Path Tests Passing** (`.venv/bin/pytest -q` in ~28s).
+- **Test Suite Health:** **73/73 Golden Path Tests Passing** (`.venv/bin/pytest -q` in ~8s).
 
 ### ✅ Modern Next.js Control Center: MunicipalDispatchFeed.tsx
 - **Directive Cards Stream:** Real-time chronological incoming advisory directive feed with timestamp, junction identifier, and dynamic urgency indicators (`CRITICAL INTERVENTION`, `HIGH PRIORITY`, `MODERATE`, `ROUTINE`).
@@ -174,7 +174,19 @@ This project retrofits existing municipal CCTV traffic camera fleets into a real
 - **Accurate Model Taxonomy:** Automatically intersects configured `active_classes` with loaded weights; transparently reports missing classes (e.g. stock COCO `auto_rickshaw` limitation) without hallucinating detections.
 - **Strict Guardrails:** Guaranteed absence of fabricated speeds, accelerations, motion states, or emissions for still images.
 - **Streamlit Integration (`dashboard/app.py`):** Sidebar navigation mode offering image upload, confidence slider, process button, original vs annotated preview, KPI cards, class breakdown chart, detection table, and JPG/CSV/JSON exports.
-- **Test Suite Health:** **72/72 tests passing** (`pytest -q` in ~33s) with dedicated coverage in `tests/test_image_intelligence.py`.
+- **Test Suite Health:** **73/73 tests passing** (`pytest -q` in ~8s) with dedicated coverage in `tests/test_image_intelligence.py` and the Streamlit preset/advisory integration test.
+
+### ✅ Operations Console UI Refresh (Streamlit)
+- **Theme System:** Added `.streamlit/config.toml` with a dark mint-accented theme, plus a consolidated design layer in `dashboard/app.py` (Inter typography, radial background, cards, chips, status pills, custom scroll and widget styling).
+- **Hero & KPI Band:** Status chips for edge/CCTV/privacy/factor provenance and five custom stat cards (vehicles, cumulative CO₂, idle share, top choke zone, telemetry volume).
+- **Interactive Quick Actions:** Refresh cached telemetry, export the active telemetry CSV, generate a deterministic advisory from the live corridor window, and jump to the What-If lab.
+- **Visual Analytics:** Plotly kinematic-state donut with observation counts and a custom 4×4 spatial choke heatmap, replacing generic Streamlit bar charts.
+- **Synced Playback Controls:** AI-overlay / raw-feed stream switch, overlay re-render action, Start / Midpoint / End time-window jumps, and active-window row counts.
+- **Operator Directive Feed:** Compact directive cards with mode/status pills, savings/confidence, **Dispatch** and **Dismiss** actions, mode filters, and a collapsed archive for older records.
+- **What-If Lab:** Reset-to-baseline callback, scenario KPI band, per-class avoided-CO₂ chart, audit table, and CSV export.
+- **Image Intelligence Polish:** Preset gallery, clear-result action, advisory publish-to-log action, advisory JSON export, and compact hero status chips.
+- **Verification:** All 73 tests pass; visually validated in headless Chrome at 1600px width.
+
 
 ---
 
@@ -222,6 +234,8 @@ When handing off this project to another LLM, enforce the following non-negotiab
 | `dispatcher/rules_fallback.py` | Complete | Deterministic rule-based dispatcher fallback |
 | `dispatcher/llm_dispatcher.py` | Complete | Schema-constrained LLM client + Python CO2 inject |
 | `dashboard/app.py` | Complete | Streamlit command UI with Video Twin & Image Intelligence modes |
+| `.streamlit/config.toml` | Complete | Dark mint-accented Streamlit theme and headless server defaults |
+| `assets_workspace/samples/*.jpg` | Complete | Bundled CCTV presets for 1-click Image Intelligence demos |
 | `tests/test_image_intelligence.py` | Complete | Unit & integration tests for single-image perception backend |
 | `dashboard-web/src/components/MunicipalDispatchFeed.tsx` | Complete | GenAI advisory feed & ATCS/SCATS dispatch control center |
 | `scripts/run_pipeline.py` | Complete | Video $\rightarrow$ tracking $\rightarrow$ kinematics $\rightarrow$ `telemetry.parquet` |
