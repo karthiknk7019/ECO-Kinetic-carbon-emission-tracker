@@ -85,6 +85,15 @@ class Detector:
         else:
             self.model = get_cached_yolo_model(self.model_name)
 
+        active_classes = set(self.config.get("active_classes", []))
+        if active_classes:
+            self.class_map: Dict[int, str] = {
+                cid: name for cid, name in self.model.names.items() if name in active_classes
+            }
+        else:
+            self.class_map = {cid: name for cid, name in self.model.names.items()}
+        self.active_classes_ids: List[int] = list(self.class_map.keys())
+
     def detect(
         self,
         source: Any,
@@ -97,11 +106,12 @@ class Detector:
         target_conf = conf if conf is not None else self.confidence
         target_imgsz = imgsz if imgsz is not None else self.imgsz
         target_device = device if device is not None else self.device
+        target_classes = classes if classes is not None else (self.active_classes_ids if self.active_classes_ids else None)
         return self.model(
             source,
             conf=target_conf,
             imgsz=target_imgsz,
-            classes=classes,
+            classes=target_classes,
             device=target_device,
             verbose=False,
         )
@@ -155,7 +165,7 @@ def run_smoke_test(config_path: Optional[Union[str, Path]] = None) -> None:
         if frame_idx % frame_skip == 0:
             res = detector.detect(
                 frame,
-                classes=list(VEHICLE_COCO_IDS.keys()),
+                classes=detector.active_classes_ids,
             )
             count = len(res[0].boxes) if res and res[0].boxes is not None else 0
             vehicle_counts.append(count)

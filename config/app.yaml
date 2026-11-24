@@ -1,4 +1,4 @@
-model: "yolo26n.pt"
+model: "models/finetuned/best.pt"
 device: "cpu"
 active_classes:
   - car

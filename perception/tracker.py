@@ -1,5 +1,6 @@
 """Ultralytics ByteTrack integration module with runtime class resolution."""
 
+from collections import Counter
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 import numpy as np
@@ -51,6 +52,7 @@ class Tracker:
         # Print class_map at startup
         print(f"[Tracker] class_map: {self.class_map}")
         self.active_classes_ids: List[int] = list(self.class_map.keys())
+        self.track_class_history: Dict[int, List[str]] = {}
 
     def track(self, frame: np.ndarray) -> List[Dict[str, Any]]:
         """Track objects in frame with ByteTrack.
@@ -102,6 +104,13 @@ class Tracker:
             if cls_name is None:
                 continue
 
+            # Temporal majority voting to prevent label flicker for the same track
+            self.track_class_history.setdefault(track_id, []).append(cls_name)
+            # Retain up to last 30 observations to handle long-running tracks
+            if len(self.track_class_history[track_id]) > 30:
+                self.track_class_history[track_id].pop(0)
+            stable_cls = Counter(self.track_class_history[track_id]).most_common(1)[0][0]
+
             conf = float(box.conf[0].item() if hasattr(box.conf[0], "item") else box.conf[0])
 
             # Safely extract bounding box geometry
@@ -129,7 +138,7 @@ class Tracker:
 
             detections.append({
                 "track_id": track_id,
-                "cls": cls_name,
+                "cls": stable_cls,
                 "cx_norm": cx_norm,
                 "cy_norm": cy_norm,
                 "bbox_w_px": bbox_w_px,
