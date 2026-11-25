@@ -64,21 +64,21 @@ st.markdown(
     }
     .stButton > button:hover {
         transform: translateY(-2px) !important;
-        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3) !important;
-        border-color: #10b981 !important;
+        box-shadow: 0 6px 20px rgba(139, 92, 246, 0.3) !important;
+        border-color: #8b5cf6 !important;
     }
     .stButton > button:active {
         transform: translateY(0px) scale(0.98) !important;
     }
     .stButton > button[kind="primary"], button[data-testid="baseButton-primary"] {
-        background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
+        background: linear-gradient(135deg, #6d28d9 0%, #8b5cf6 100%) !important;
         color: #ffffff !important;
-        border: 1px solid #34d399 !important;
-        box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35) !important;
+        border: 1px solid #a78bfa !important;
+        box-shadow: 0 4px 14px rgba(139, 92, 246, 0.35) !important;
     }
     .stButton > button[kind="primary"]:hover, button[data-testid="baseButton-primary"]:hover {
-        background: linear-gradient(135deg, #10b981 0%, #34d399 100%) !important;
-        box-shadow: 0 6px 24px rgba(16, 185, 129, 0.55) !important;
+        background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%) !important;
+        box-shadow: 0 6px 24px rgba(139, 92, 246, 0.55) !important;
         transform: translateY(-2px) scale(1.01) !important;
     }
     .stButton > button[kind="secondary"], button[data-testid="baseButton-secondary"] {
@@ -88,15 +88,15 @@ st.markdown(
     }
     .stButton > button[kind="secondary"]:hover, button[data-testid="baseButton-secondary"]:hover {
         background: #282f44 !important;
-        border-color: #38bdf8 !important;
-        box-shadow: 0 4px 16px rgba(56, 189, 248, 0.3) !important;
-        color: #38bdf8 !important;
+        border-color: #e879f9 !important;
+        box-shadow: 0 4px 16px rgba(232, 121, 249, 0.3) !important;
+        color: #e879f9 !important;
     }
 
     /* Sidebar console brand card */
     .sidebar-console-card {
         background: linear-gradient(135deg, #0b1320 0%, #172545 50%, #0c201d 100%);
-        border: 1px solid rgba(52, 211, 153, 0.30);
+        border: 1px solid rgba(167, 139, 250, 0.30);
         border-radius: 12px;
         padding: 16px;
         margin-bottom: 14px;
@@ -111,31 +111,31 @@ st.markdown(
     .pulse-indicator {
         width: 9px;
         height: 9px;
-        background-color: #10b981;
+        background-color: #8b5cf6;
         border-radius: 50%;
         display: inline-block;
-        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+        box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.7);
         animation: pulseGlow 1.8s infinite;
     }
     @keyframes pulseGlow {
         0% {
             transform: scale(0.95);
-            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.7);
         }
         70% {
             transform: scale(1.05);
-            box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+            box-shadow: 0 0 0 8px rgba(139, 92, 246, 0);
         }
         100% {
             transform: scale(0.95);
-            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+            box-shadow: 0 0 0 0 rgba(139, 92, 246, 0);
         }
     }
     .status-text {
         font-size: 10px;
         font-weight: 700;
         letter-spacing: 0.8px;
-        color: #10b981;
+        color: #8b5cf6;
         text-transform: uppercase;
     }
     .console-heading {
@@ -160,8 +160,8 @@ st.markdown(
         text-transform: uppercase;
     }
     .nav-active-status-card {
-        background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(14, 165, 233, 0.08) 100%);
-        border: 1px solid rgba(16, 185, 129, 0.4);
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.12) 0%, rgba(14, 165, 233, 0.08) 100%);
+        border: 1px solid rgba(139, 92, 246, 0.4);
         border-radius: 10px;
         padding: 12px;
         margin-top: 10px;
@@ -170,16 +170,21 @@ st.markdown(
     }
     .nav-active-status-card:hover {
         transform: translateY(-1px);
-        border-color: rgba(52, 211, 153, 0.62);
-        box-shadow: 0 10px 24px rgba(16, 185, 129, 0.12);
+        border-color: rgba(167, 139, 250, 0.62);
+        box-shadow: 0 10px 24px rgba(139, 92, 246, 0.12);
     }
     .active-badge-tag {
         font-size: 10px;
         font-weight: 700;
-        color: #10b981;
+        color: #8b5cf6;
         letter-spacing: 0.6px;
         text-transform: uppercase;
         margin-bottom: 3px;
+        animation: statusPulse 2.8s ease-in-out infinite;
+    }
+    @keyframes statusPulse {
+        0%, 100% { text-shadow: 0 0 0 rgba(139, 92, 246, 0); }
+        50% { text-shadow: 0 0 14px rgba(139, 92, 246, 0.55); }
     }
     .active-title-text {
         font-size: 13px;
@@ -204,7 +209,7 @@ st.markdown(
     .metric-value {
         font-size: 28px;
         font-weight: 700;
-        color: #00d26a;
+        color: #a78bfa;
     }
     .metric-label {
         font-size: 13px;
@@ -229,12 +234,58 @@ st.markdown(
         font-weight: 600;
     }
     .kpi-card {
-        background: linear-gradient(135deg, #161821 0%, #1e2230 100%);
-        border: 1px solid #2d3748;
-        border-radius: 10px;
-        padding: 14px;
+        --kpi-accent: #94a3b8;
+        position: relative;
+        overflow: hidden;
+        background:
+            radial-gradient(150px 90px at 50% -10%, color-mix(in srgb, var(--kpi-accent) 16%, transparent), transparent 72%),
+            linear-gradient(160deg, rgba(22, 30, 46, 0.92), rgba(11, 16, 26, 0.96));
+        border: 1px solid color-mix(in srgb, var(--kpi-accent) 24%, rgba(148, 163, 184, 0.14));
+        border-radius: 14px;
+        padding: 15px 14px 13px;
         text-align: center;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.28s ease, box-shadow 0.28s ease;
+        animation: kpiIn 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+    }
+    .kpi-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 12%;
+        right: 12%;
+        height: 2px;
+        border-radius: 99px;
+        background: linear-gradient(90deg, transparent, var(--kpi-accent), transparent);
+        opacity: 0.8;
+    }
+    .kpi-card::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -75%;
+        width: 50%;
+        height: 100%;
+        background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.07), transparent);
+        transform: skewX(-18deg);
+        transition: left 0.7s ease;
+        pointer-events: none;
+    }
+    .kpi-card:hover {
+        transform: translateY(-4px);
+        border-color: color-mix(in srgb, var(--kpi-accent) 58%, transparent);
+        box-shadow: 0 20px 42px rgba(0, 0, 0, 0.46), 0 0 28px color-mix(in srgb, var(--kpi-accent) 16%, transparent);
+    }
+    .kpi-card:hover::after { left: 135%; }
+    .kpi-accent-neutral { --kpi-accent: #cbd5e1; }
+    .kpi-accent-green { --kpi-accent: #34d399; animation-delay: 0.05s; }
+    .kpi-accent-blue { --kpi-accent: #38bdf8; animation-delay: 0.10s; }
+    .kpi-accent-amber { --kpi-accent: #fbbf24; animation-delay: 0.15s; }
+    .kpi-accent-purple { --kpi-accent: #c084fc; animation-delay: 0.20s; }
+    .kpi-accent-lime { --kpi-accent: #a3e635; animation-delay: 0.25s; }
+    @keyframes kpiIn {
+        from { opacity: 0; transform: translateY(14px) scale(0.985); }
+        to { opacity: 1; transform: none; }
     }
     .kpi-title {
         font-size: 11px;
@@ -248,6 +299,13 @@ st.markdown(
         font-size: 26px;
         font-weight: 700;
         color: #f8fafc;
+        font-variant-numeric: tabular-nums;
+        text-shadow: 0 0 24px color-mix(in srgb, var(--kpi-accent) 30%, transparent);
+        animation: kpiNumGlow 4.5s ease-in-out infinite alternate;
+    }
+    @keyframes kpiNumGlow {
+        from { text-shadow: 0 0 16px color-mix(in srgb, var(--kpi-accent) 16%, transparent); }
+        to { text-shadow: 0 0 30px color-mix(in srgb, var(--kpi-accent) 38%, transparent); }
     }
     .kpi-num-green {
         color: #10b981;
@@ -267,13 +325,35 @@ st.markdown(
         margin-top: 3px;
     }
     .ai-advisory-container {
-        background: linear-gradient(135deg, #0f172a 0%, #172554 50%, #064e3b 100%);
-        border: 1px solid #2563eb;
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #4c1d95 100%);
+        border: 1px solid #7c3aed;
         border-radius: 12px;
         padding: 20px;
         margin: 15px 0 20px 0;
-        box-shadow: 0 8px 24px rgba(37, 99, 235, 0.15);
+        box-shadow: 0 8px 24px rgba(124, 58, 237, 0.15);
+        animation: fadeUp 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+        transition: border-color 0.35s ease, box-shadow 0.35s ease;
     }
+    .ai-advisory-container::before {
+        content: "";
+        position: absolute;
+        inset: -70%;
+        background: conic-gradient(from 0deg,
+            transparent 0deg 200deg,
+            rgba(167, 139, 250, 0.22) 248deg,
+            rgba(232, 121, 249, 0.18) 282deg,
+            transparent 320deg);
+        animation: advisorySpin 18s linear infinite;
+        pointer-events: none;
+    }
+    .ai-advisory-container > * { position: relative; z-index: 1; }
+    .ai-advisory-container:hover {
+        border-color: rgba(232, 121, 249, 0.55);
+        box-shadow: 0 14px 40px rgba(124, 58, 237, 0.24), 0 0 40px rgba(139, 92, 246, 0.10);
+    }
+    @keyframes advisorySpin { to { transform: rotate(360deg); } }
     .fleet-tag {
         display: inline-block;
         padding: 4px 10px;
@@ -291,8 +371,8 @@ st.markdown(
     }
     .stApp {
         background:
-            radial-gradient(1100px 620px at 18% -12%, rgba(16, 185, 129, 0.13), transparent 60%),
-            radial-gradient(900px 520px at 92% 0%, rgba(56, 189, 248, 0.10), transparent 58%),
+            radial-gradient(1100px 620px at 18% -12%, rgba(139, 92, 246, 0.13), transparent 60%),
+            radial-gradient(900px 520px at 92% 0%, rgba(232, 121, 249, 0.10), transparent 58%),
             #070a10;
     }
     header[data-testid="stHeader"] {
@@ -345,7 +425,7 @@ st.markdown(
         padding: 26px 28px 24px 28px;
         margin-bottom: 20px;
         background:
-            linear-gradient(115deg, rgba(16, 185, 129, 0.13) 0%, rgba(15, 23, 42, 0.55) 42%, rgba(56, 189, 248, 0.09) 100%);
+            linear-gradient(115deg, rgba(139, 92, 246, 0.13) 0%, rgba(15, 23, 42, 0.55) 42%, rgba(232, 121, 249, 0.09) 100%);
         box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
     }
     .console-hero::after {
@@ -356,7 +436,7 @@ st.markdown(
         right: -120px;
         top: -180px;
         border-radius: 50%;
-        background: radial-gradient(circle, rgba(16, 185, 129, 0.25), transparent 65%);
+        background: radial-gradient(circle, rgba(139, 92, 246, 0.25), transparent 65%);
         pointer-events: none;
     }
     .hero-eyebrow {
@@ -367,7 +447,7 @@ st.markdown(
         font-weight: 700;
         letter-spacing: 0.16em;
         text-transform: uppercase;
-        color: #34d399;
+        color: #a78bfa;
         margin-bottom: 10px;
     }
     .hero-copy {
@@ -397,14 +477,14 @@ st.markdown(
         background: rgba(15, 23, 42, 0.55);
     }
     .chip-live {
-        border-color: rgba(16, 185, 129, 0.42);
-        color: #6ee7b7;
-        background: rgba(16, 185, 129, 0.10);
+        border-color: rgba(139, 92, 246, 0.42);
+        color: #c4b5fd;
+        background: rgba(139, 92, 246, 0.10);
     }
     .chip-blue {
-        border-color: rgba(56, 189, 248, 0.36);
-        color: #7dd3fc;
-        background: rgba(56, 189, 248, 0.08);
+        border-color: rgba(232, 121, 249, 0.36);
+        color: #f0abfc;
+        background: rgba(232, 121, 249, 0.08);
     }
     .chip-amber {
         border-color: rgba(245, 158, 11, 0.36);
@@ -416,7 +496,7 @@ st.markdown(
         height: 7px;
         border-radius: 50%;
         background: currentColor;
-        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.13);
+        box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.13);
     }
 
     /* Section headers */
@@ -432,7 +512,7 @@ st.markdown(
         font-weight: 700;
         letter-spacing: 0.15em;
         text-transform: uppercase;
-        color: #34d399;
+        color: #a78bfa;
         margin-bottom: 4px;
     }
     .section-title {
@@ -471,7 +551,7 @@ st.markdown(
         right: 0;
         top: 0;
         height: 2px;
-        background: var(--accent, #10b981);
+        background: var(--accent, #8b5cf6);
         opacity: 0.9;
     }
     .stat-icon {
@@ -499,7 +579,7 @@ st.markdown(
         font-size: 10.5px;
         margin-top: 7px;
     }
-    .stat-foot b { color: var(--accent, #10b981); font-weight: 600; }
+    .stat-foot b { color: var(--accent, #8b5cf6); font-weight: 600; }
 
     /* Panels */
     .panel-card {
@@ -525,7 +605,7 @@ st.markdown(
     /* Directive cards */
     .feed-card {
         border: 1px solid rgba(148, 163, 184, 0.14);
-        border-left: 3px solid var(--edge, #38bdf8);
+        border-left: 3px solid var(--edge, #e879f9);
         border-radius: 13px;
         background: linear-gradient(120deg, rgba(17, 24, 39, 0.85), rgba(10, 15, 24, 0.85));
         padding: 14px 16px;
@@ -550,7 +630,7 @@ st.markdown(
         margin-top: 9px;
     }
     .feed-actions {
-        color: #7dd3fc;
+        color: #f0abfc;
         font-size: 11.5px;
         margin-top: 6px;
     }
@@ -597,7 +677,7 @@ st.markdown(
     }
     .stTabs [aria-selected="true"] {
         color: #f8fafc !important;
-        background: rgba(16, 185, 129, 0.08);
+        background: rgba(139, 92, 246, 0.08);
     }
     [data-testid="stExpander"] {
         border: 1px solid rgba(148, 163, 184, 0.14) !important;
@@ -639,8 +719,8 @@ st.markdown(
         font-weight: 600 !important;
     }
     .stDownloadButton > button:hover {
-        border-color: #34d399 !important;
-        color: #6ee7b7 !important;
+        border-color: #a78bfa !important;
+        color: #c4b5fd !important;
     }
     .empty-state {
         border: 1px dashed rgba(148, 163, 184, 0.28);
@@ -658,29 +738,30 @@ st.markdown(
     /* ------------------------------------------------------------------
        INTERACTION LAYER — motion, depth & tactile feedback
        ------------------------------------------------------------------ */
-    ::selection { background: rgba(16, 185, 129, 0.35); color: #ffffff; }
+    ::selection { background: rgba(139, 92, 246, 0.35); color: #ffffff; }
     html { scroll-behavior: smooth; }
     ::-webkit-scrollbar { width: 10px; height: 10px; }
     ::-webkit-scrollbar-track { background: #070a10; }
     ::-webkit-scrollbar-thumb {
-        background: linear-gradient(180deg, #134e4a, #0f766e);
+        background: linear-gradient(180deg, #3b0764, #6d28d9);
         border-radius: 99px;
         border: 2px solid #070a10;
     }
-    ::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #10b981, #059669); }
+    ::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #8b5cf6, #6d28d9); }
 
     .stApp {
         background:
-            radial-gradient(1200px 700px at 12% -10%, rgba(16, 185, 129, 0.16), transparent 62%),
-            radial-gradient(1000px 600px at 95% 2%, rgba(56, 189, 248, 0.12), transparent 60%),
-            radial-gradient(900px 700px at 50% 112%, rgba(139, 92, 246, 0.10), transparent 62%),
+            radial-gradient(1200px 700px at 12% -10%, rgba(139, 92, 246, 0.16), transparent 62%),
+            radial-gradient(1000px 600px at 95% 2%, rgba(232, 121, 249, 0.12), transparent 60%),
+            radial-gradient(900px 700px at 50% 112%, rgba(34, 211, 238, 0.10), transparent 62%),
+            radial-gradient(rgba(148, 163, 184, 0.055) 1px, transparent 1.4px) 0 0 / 24px 24px,
             #05070c;
-        background-size: 135% 135%;
+        background-size: 135% 135%, 135% 135%, 135% 135%, 24px 24px;
         animation: bgDrift 28s ease-in-out infinite alternate;
     }
     @keyframes bgDrift {
-        from { background-position: 0% 0%, 100% 0%, 50% 100%; }
-        to { background-position: 14% 10%, 86% 8%, 46% 92%; }
+        from { background-position: 0% 0%, 100% 0%, 50% 100%, 0 0; }
+        to { background-position: 14% 10%, 86% 8%, 46% 92%, 24px 24px; }
     }
 
     /* Hero container */
@@ -688,11 +769,11 @@ st.markdown(
         position: relative;
         overflow: hidden;
         padding: 28px 32px 24px 32px !important;
-        border: 1px solid rgba(110, 231, 183, 0.20) !important;
+        border: 1px solid rgba(196, 181, 253, 0.20) !important;
         border-radius: 24px !important;
         background:
-            radial-gradient(620px 240px at 0% 0%, rgba(16, 185, 129, 0.20), transparent 70%),
-            radial-gradient(520px 280px at 100% 0%, rgba(56, 189, 248, 0.14), transparent 70%),
+            radial-gradient(620px 240px at 0% 0%, rgba(139, 92, 246, 0.20), transparent 70%),
+            radial-gradient(520px 280px at 100% 0%, rgba(232, 121, 249, 0.14), transparent 70%),
             linear-gradient(135deg, rgba(13, 26, 32, 0.94), rgba(8, 12, 20, 0.94)) !important;
         box-shadow: 0 24px 60px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
         transition: border-color 0.35s ease, box-shadow 0.35s ease;
@@ -706,9 +787,9 @@ st.markdown(
         height: 230%;
         background: conic-gradient(from 180deg at 50% 50%,
             transparent 0deg,
-            rgba(16, 185, 129, 0.10) 70deg,
+            rgba(139, 92, 246, 0.10) 70deg,
             transparent 140deg,
-            rgba(56, 189, 248, 0.08) 220deg,
+            rgba(232, 121, 249, 0.08) 220deg,
             transparent 300deg);
         animation: heroGlow 20s linear infinite;
         pointer-events: none;
@@ -721,15 +802,15 @@ st.markdown(
         right: 0;
         top: 0;
         height: 2px;
-        background: linear-gradient(90deg, transparent, #34d399, #38bdf8, transparent);
+        background: linear-gradient(90deg, transparent, #a78bfa, #e879f9, transparent);
         background-size: 200% 100%;
         animation: scanLine 7s linear infinite;
         pointer-events: none;
         z-index: 2;
     }
     .st-key-hero:hover {
-        border-color: rgba(110, 231, 183, 0.38) !important;
-        box-shadow: 0 28px 70px rgba(0, 0, 0, 0.48), 0 0 48px rgba(16, 185, 129, 0.10) !important;
+        border-color: rgba(196, 181, 253, 0.38) !important;
+        box-shadow: 0 28px 70px rgba(0, 0, 0, 0.48), 0 0 48px rgba(139, 92, 246, 0.10) !important;
     }
     .st-key-hero { animation: heroIn 0.65s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
     @keyframes heroIn {
@@ -738,11 +819,17 @@ st.markdown(
     }
     .st-key-hero h1 {
         font-size: 2.55rem !important;
-        background: linear-gradient(94deg, #ffffff 0%, #d1fae5 40%, #6ee7b7 72%, #7dd3fc 100%);
+        background: linear-gradient(94deg, #ffffff 0%, #ede9fe 40%, #c4b5fd 72%, #f0abfc 100%);
+        background-size: 200% auto;
         -webkit-background-clip: text;
         background-clip: text;
         -webkit-text-fill-color: transparent;
-        filter: drop-shadow(0 8px 26px rgba(16, 185, 129, 0.18));
+        filter: drop-shadow(0 8px 26px rgba(139, 92, 246, 0.18));
+        animation: titleSheen 11s ease-in-out infinite alternate;
+    }
+    @keyframes titleSheen {
+        from { background-position: 0% center; }
+        to { background-position: 100% center; }
     }
     @supports not ((-webkit-background-clip: text) or (background-clip: text)) {
         .st-key-hero h1 {
@@ -782,37 +869,65 @@ st.markdown(
         position: absolute;
         inset: 0;
         border-radius: 50%;
-        border: 1px solid rgba(52, 211, 153, 0.16);
+        border: 1px solid rgba(167, 139, 250, 0.16);
     }
     .ring-a {
-        border-top-color: rgba(52, 211, 153, 0.75);
-        border-right-color: rgba(56, 189, 248, 0.35);
+        border-top-color: rgba(167, 139, 250, 0.75);
+        border-right-color: rgba(232, 121, 249, 0.35);
         animation: orbitSpin 26s linear infinite;
     }
     .ring-b {
         inset: 24px;
-        border-bottom-color: rgba(56, 189, 248, 0.75);
-        border-left-color: rgba(52, 211, 153, 0.30);
+        border-bottom-color: rgba(232, 121, 249, 0.75);
+        border-left-color: rgba(167, 139, 250, 0.30);
         animation: orbitSpin 16s linear infinite reverse;
     }
     .hero-core {
         position: absolute;
         inset: 60px;
         border-radius: 50%;
-        background: radial-gradient(circle at 35% 30%, rgba(16, 185, 129, 0.35), rgba(8, 16, 22, 0.92));
-        border: 1px solid rgba(52, 211, 153, 0.42);
+        background: radial-gradient(circle at 35% 30%, rgba(139, 92, 246, 0.35), rgba(8, 16, 22, 0.92));
+        border: 1px solid rgba(167, 139, 250, 0.42);
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 0 34px rgba(16, 185, 129, 0.26), inset 0 0 18px rgba(16, 185, 129, 0.20);
+        box-shadow: 0 0 34px rgba(139, 92, 246, 0.26), inset 0 0 18px rgba(139, 92, 246, 0.20);
     }
     .hero-core-dot {
         width: 10px;
         height: 10px;
         border-radius: 50%;
-        background: #34d399;
-        box-shadow: 0 0 18px #34d399;
+        background: #a78bfa;
+        box-shadow: 0 0 18px #a78bfa;
         animation: corePulse 2.2s ease-in-out infinite;
+    }
+    .hero-sat {
+        --orbit: 82px;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 6px;
+        height: 6px;
+        margin: -3px 0 0 -3px;
+        border-radius: 50%;
+        background: #a78bfa;
+        box-shadow: 0 0 12px rgba(167, 139, 250, 0.9);
+        transform: translateX(var(--orbit));
+        animation: satOrbit 10s linear infinite;
+    }
+    .hero-sat.sat-b {
+        --orbit: 56px;
+        width: 4px;
+        height: 4px;
+        margin: -2px 0 0 -2px;
+        background: #22d3ee;
+        box-shadow: 0 0 12px rgba(34, 211, 238, 0.9);
+        animation-duration: 15s;
+        animation-direction: reverse;
+    }
+    @keyframes satOrbit {
+        from { transform: rotate(0deg) translateX(var(--orbit)); }
+        to { transform: rotate(360deg) translateX(var(--orbit)); }
     }
     @keyframes orbitSpin { to { transform: rotate(360deg); } }
     @keyframes corePulse {
@@ -834,13 +949,13 @@ st.markdown(
     .chip:nth-child(5) { animation-delay: 0.20s; }
     .chip:hover {
         transform: translateY(-2px);
-        border-color: rgba(110, 231, 183, 0.5);
+        border-color: rgba(196, 181, 253, 0.5);
         box-shadow: 0 10px 22px rgba(0, 0, 0, 0.4);
     }
     .chip-live .dot { animation: dotBreathe 2.4s ease-in-out infinite; }
     @keyframes dotBreathe {
-        0%, 100% { box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12); }
-        50% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.04); }
+        0%, 100% { box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12); }
+        50% { box-shadow: 0 0 0 6px rgba(139, 92, 246, 0.04); }
     }
 
     /* Section headers */
@@ -856,8 +971,27 @@ st.markdown(
         bottom: 7px;
         width: 3px;
         border-radius: 99px;
-        background: linear-gradient(180deg, #34d399, #38bdf8);
-        box-shadow: 0 0 16px rgba(52, 211, 153, 0.55);
+        background: linear-gradient(180deg, #a78bfa, #e879f9);
+        box-shadow: 0 0 16px rgba(167, 139, 250, 0.55);
+        animation: barGlow 3.4s ease-in-out infinite;
+    }
+    .section-head::after {
+        content: "";
+        position: absolute;
+        left: 15px;
+        right: 6px;
+        bottom: -7px;
+        height: 1px;
+        background: linear-gradient(90deg, rgba(167, 139, 250, 0.55), rgba(232, 121, 249, 0.28), transparent 85%);
+        transform: scaleX(0.35);
+        transform-origin: left;
+        opacity: 0.7;
+        transition: transform 0.55s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.4s ease;
+    }
+    .section-head:hover::after { transform: scaleX(1); opacity: 1; }
+    @keyframes barGlow {
+        0%, 100% { box-shadow: 0 0 10px rgba(167, 139, 250, 0.35); }
+        50% { box-shadow: 0 0 22px rgba(167, 139, 250, 0.70); }
     }
     .section-kicker { transition: letter-spacing 0.3s ease; }
     .section-head:hover .section-kicker { letter-spacing: 0.19em; }
@@ -942,12 +1076,26 @@ st.markdown(
     }
     .stDownloadButton > button:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 22px rgba(16, 185, 129, 0.22);
+        box-shadow: 0 8px 22px rgba(139, 92, 246, 0.22);
+    }
+    .stButton > button[kind="primary"],
+    .stDownloadButton > button[kind="primary"] {
+        background-image: linear-gradient(100deg, #5b21b6, #8b5cf6 48%, #22d3ee);
+        background-size: 180% 100%;
+        border: none !important;
+        box-shadow: 0 10px 26px rgba(139, 92, 246, 0.24);
+        transition: background-position 0.5s ease, transform 0.22s ease, box-shadow 0.22s ease;
+    }
+    .stButton > button[kind="primary"]:hover,
+    .stDownloadButton > button[kind="primary"]:hover {
+        background-position: 100% 0;
+        transform: translateY(-2px);
+        box-shadow: 0 16px 34px rgba(139, 92, 246, 0.34);
     }
     button:focus-visible,
     [role="tab"]:focus-visible,
     [role="slider"]:focus-visible {
-        outline: 2px solid #34d399 !important;
+        outline: 2px solid #a78bfa !important;
         outline-offset: 2px !important;
     }
 
@@ -968,8 +1116,8 @@ st.markdown(
     }
     .sidebar-console-card:hover {
         transform: translateY(-2px);
-        border-color: rgba(52, 211, 153, 0.55);
-        box-shadow: 0 12px 34px rgba(37, 99, 235, 0.28), 0 0 38px rgba(16, 185, 129, 0.10);
+        border-color: rgba(167, 139, 250, 0.55);
+        box-shadow: 0 12px 34px rgba(124, 58, 237, 0.28), 0 0 38px rgba(139, 92, 246, 0.10);
     }
     .sidebar-console-card:hover::after { transform: translateX(110%); }
     .stRadio [role="radiogroup"] label {
@@ -978,47 +1126,37 @@ st.markdown(
     }
     .stRadio [role="radiogroup"] label:hover {
         transform: translateX(3px);
-        border-color: rgba(52, 211, 153, 0.45);
-        background: rgba(16, 185, 129, 0.08);
+        border-color: rgba(167, 139, 250, 0.45);
+        background: rgba(139, 92, 246, 0.08);
     }
     .stRadio [role="radiogroup"] label:has(input:checked) {
-        border-color: rgba(52, 211, 153, 0.55);
-        background: linear-gradient(100deg, rgba(16, 185, 129, 0.16), rgba(56, 189, 248, 0.06));
-        box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.16), 0 10px 24px rgba(16, 185, 129, 0.12);
+        border-color: rgba(167, 139, 250, 0.55);
+        background: linear-gradient(100deg, rgba(139, 92, 246, 0.16), rgba(232, 121, 249, 0.06));
+        box-shadow: 0 0 0 1px rgba(167, 139, 250, 0.16), 0 10px 24px rgba(139, 92, 246, 0.12);
     }
     [data-testid="stSidebar"] .stRadio [role="radiogroup"] label:has(input:checked) p {
-        color: #ecfdf5;
+        color: #f5f3ff;
         font-weight: 600;
-    }
-
-    /* Image preset tiles */
-    .st-key-preset_moving_auto button,
-    .st-key-preset_parked_auto button {
-        background: linear-gradient(100deg, rgba(16, 185, 129, 0.12), rgba(56, 189, 248, 0.06)) !important;
-        border-color: rgba(52, 211, 153, 0.30) !important;
-        color: #d1fae5 !important;
-        min-height: 46px;
-        font-size: 13px !important;
-    }
-    .st-key-preset_moving_auto button:hover,
-    .st-key-preset_parked_auto button:hover {
-        border-color: rgba(52, 211, 153, 0.62) !important;
-        box-shadow: 0 12px 28px rgba(16, 185, 129, 0.22) !important;
     }
 
     /* Tabs */
     .stTabs [data-baseweb="tab"] {
-        transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+        transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease, text-shadow 0.25s ease;
     }
     .stTabs [data-baseweb="tab"]:hover {
-        background: rgba(16, 185, 129, 0.08);
-        color: #d1fae5;
+        background: rgba(139, 92, 246, 0.08);
+        color: #ede9fe;
         transform: translateY(-1px);
     }
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {
+        color: #f5f3ff !important;
+        text-shadow: 0 0 16px rgba(167, 139, 250, 0.35);
+    }
     .stTabs [data-baseweb="tab-highlight"] {
-        background: linear-gradient(90deg, #10b981, #38bdf8) !important;
+        background: linear-gradient(90deg, #8b5cf6, #e879f9) !important;
         height: 3px !important;
         border-radius: 99px;
+        box-shadow: 0 0 16px rgba(167, 139, 250, 0.55);
     }
 
     /* Directive feed cards */
@@ -1053,60 +1191,79 @@ st.markdown(
         transition: box-shadow 0.3s ease;
     }
     [data-testid="stVideo"]:hover {
-        box-shadow: 0 24px 58px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(52, 211, 153, 0.18);
+        box-shadow: 0 24px 58px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(167, 139, 250, 0.18);
+    }
+    [data-testid="stPlotlyChart"] {
+        animation: fadeUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
     }
     [data-testid="stMetric"] {
         transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
     }
     [data-testid="stMetric"]:hover {
         transform: translateY(-2px);
-        border-color: rgba(52, 211, 153, 0.30);
+        border-color: rgba(167, 139, 250, 0.30);
         box-shadow: 0 16px 34px rgba(0, 0, 0, 0.36);
     }
     [data-testid="stDataFrame"] { transition: border-color 0.25s ease, box-shadow 0.25s ease; }
     [data-testid="stDataFrame"]:hover {
-        border-color: rgba(52, 211, 153, 0.26);
+        border-color: rgba(167, 139, 250, 0.26);
         box-shadow: 0 12px 30px rgba(0, 0, 0, 0.30);
     }
     [data-testid="stExpander"] {
         transition: border-color 0.25s ease, background 0.25s ease;
     }
     [data-testid="stExpander"]:hover {
-        border-color: rgba(52, 211, 153, 0.28) !important;
+        border-color: rgba(167, 139, 250, 0.28) !important;
         background: rgba(13, 19, 30, 0.76);
     }
-    [data-testid="stFileUploader"] section {
+    [data-testid="stExpander"] summary [data-testid="stIconMaterial"] {
+        transition: transform 0.25s ease, color 0.25s ease;
+    }
+    [data-testid="stExpander"] summary:hover [data-testid="stIconMaterial"] {
+        color: #a78bfa;
+        transform: translateX(2px);
+    }
+    [data-testid="stFileUploader"] section,
+    [data-testid="stFileUploaderDropzone"] {
         transition: border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
     }
-    [data-testid="stFileUploader"] section:hover {
-        border-color: rgba(52, 211, 153, 0.55);
-        background: rgba(16, 185, 129, 0.05);
-        box-shadow: inset 0 0 34px rgba(16, 185, 129, 0.05);
+    [data-testid="stFileUploader"] section:hover,
+    [data-testid="stFileUploaderDropzone"]:hover {
+        border-color: rgba(167, 139, 250, 0.55);
+        background: rgba(139, 92, 246, 0.05);
+        box-shadow: inset 0 0 34px rgba(139, 92, 246, 0.05);
+    }
+    [data-testid="stFileUploaderDropzone"] svg {
+        transition: transform 0.3s ease, color 0.3s ease;
+    }
+    [data-testid="stFileUploaderDropzone"]:hover svg {
+        transform: translateY(-3px) scale(1.06);
+        color: #a78bfa;
     }
     [data-baseweb="slider"] [role="slider"] {
         transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
     [data-baseweb="slider"] [role="slider"]:hover {
         transform: scale(1.14);
-        box-shadow: 0 0 0 8px rgba(16, 185, 129, 0.14);
+        box-shadow: 0 0 0 8px rgba(139, 92, 246, 0.14);
     }
     [data-baseweb="input"], [data-baseweb="textarea"] {
         transition: border-color 0.2s ease, box-shadow 0.2s ease;
     }
     [data-baseweb="input"]:focus-within, [data-baseweb="textarea"]:focus-within {
-        border-color: rgba(52, 211, 153, 0.55) !important;
-        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12) !important;
+        border-color: rgba(167, 139, 250, 0.55) !important;
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12) !important;
     }
 
     /* Alerts & toasts */
     [data-testid="stAlert"] {
         border-radius: 12px !important;
-        border: 1px solid rgba(56, 189, 248, 0.22) !important;
+        border: 1px solid rgba(232, 121, 249, 0.22) !important;
         animation: fadeUp 0.35s ease both;
     }
     [data-testid="stToast"] {
         background: #0c1a17 !important;
-        border: 1px solid rgba(52, 211, 153, 0.35) !important;
+        border: 1px solid rgba(167, 139, 250, 0.35) !important;
         border-radius: 12px !important;
         box-shadow: 0 18px 42px rgba(0, 0, 0, 0.5) !important;
         animation: toastIn 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
@@ -1732,6 +1889,8 @@ def render_video_operations(artifacts_dir: Path) -> None:
                 <div class="hero-ring ring-a"></div>
                 <div class="hero-ring ring-b"></div>
                 <div class="hero-core"><span class="hero-core-dot"></span></div>
+                <span class="hero-sat sat-a"></span>
+                <span class="hero-sat sat-b"></span>
             </div>
             """
         )
@@ -2292,7 +2451,7 @@ def render_image_sidebar(analyzer: TrafficImageAnalyzer) -> None:
         else:
             _html(
                 '<div class="empty-state" style="padding:10px 12px;font-size:11px;">'
-                "No image loaded. Choose a preset or upload a photograph in the main panel.</div>"
+                "No image loaded. Upload a photograph in the main panel to begin.</div>"
             )
 
         st.markdown("<p class='nav-section-title'>ENGINE ACTIONS</p>", unsafe_allow_html=True)
@@ -2322,7 +2481,7 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
     with st.container(key="hero"):
         st.title("Traffic Image Intelligence")
         st.caption(
-            "Upload one junction photograph — or load a bundled CCTV still — to inspect the vehicle mix, "
+            "Upload one junction photograph to inspect the vehicle mix, "
             "estimate snapshot idle-burn potential, and generate a municipal advisory."
         )
         _html(
@@ -2337,6 +2496,8 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
                 <div class="hero-ring ring-a"></div>
                 <div class="hero-ring ring-b"></div>
                 <div class="hero-core"><span class="hero-core-dot"></span></div>
+                <span class="hero-sat sat-a"></span>
+                <span class="hero-sat sat-b"></span>
             </div>
             """
         )
@@ -2348,57 +2509,13 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
     if analyzer.limitation_notes:
         st.info(f"ℹ️ **Model Taxonomy Note:** {analyzer.limitation_notes}")
 
-    # Section 1: 1-Click Test Presets
-    sample_dir = REPO_ROOT / "assets_workspace" / "samples"
-    preset_samples = {
-        "moving_auto": {
-            "name": "🛺 Moving Auto-Rickshaw (CCTV)",
-            "file": sample_dir / "sample_junction_moving_auto.jpg",
-            "desc": "Roundabout entry with active moving auto-rickshaw, cars & motorcycles",
-        },
-        "parked_auto": {
-            "name": "🛑 Parked Service Auto (CCTV)",
-            "file": sample_dir / "sample_junction_parked_auto.jpg",
-            "desc": "Right-hand service lane with parked auto & active mixed flow",
-        },
-    }
-
-    st.markdown("##### ⚡ Quick test presets")
-    st.caption("Bundled CCTV stills — runs real local inference.")
-    p_col1, p_col2 = st.columns(2)
-    preset_selected = None
-
-    with p_col1:
-        if st.button(
-            preset_samples["moving_auto"]["name"],
-            key="preset_moving_auto",
-            width="stretch",
-            help=preset_samples["moving_auto"]["desc"],
-        ):
-            preset_selected = "moving_auto"
-    with p_col2:
-        if st.button(
-            preset_samples["parked_auto"]["name"],
-            key="preset_parked_auto",
-            width="stretch",
-            help=preset_samples["parked_auto"]["desc"],
-        ):
-            preset_selected = "parked_auto"
-
-    if preset_selected:
-        p_info = preset_samples[preset_selected]
-        if p_info["file"].exists():
-            st.session_state["active_img_bytes"] = p_info["file"].read_bytes()
-            st.session_state["active_img_name"] = p_info["file"].name
-            st.session_state["img_source_type"] = "preset"
-
     st.write("")
 
-    # Section 2: Upload and Inference Controls
+    # Upload and Inference Controls
     col_up, col_ctrl = st.columns([1.3, 1.0])
     with col_up:
         uploaded_file = st.file_uploader(
-            "Or Upload Custom Traffic Photograph",
+            "Upload Traffic Photograph",
             type=["jpg", "jpeg", "png", "webp"],
             help="Upload a standard traffic photograph (JPG, JPEG, PNG, or WebP, max 20 MB). Processed strictly locally on CPU.",
         )
@@ -2441,7 +2558,7 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
 
     # Empty State Check
     if "active_img_bytes" not in st.session_state:
-        st.info("👆 Click any 1-Click Test Preset above or upload a photograph to start vehicle perception & AI advisory.")
+        st.info("👆 Upload a photograph above to start vehicle perception & AI advisory.")
         render_image_sidebar(analyzer)
         return
 
@@ -2452,7 +2569,6 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
 
     should_process = (
         process_btn
-        or preset_selected is not None
         or st.session_state.get("img_key") != file_key
     )
 
@@ -2560,7 +2676,7 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
     with k1:
         st.markdown(
             f"""
-            <div class="kpi-card">
+            <div class="kpi-card kpi-accent-neutral">
                 <div class="kpi-title">Total Fleet</div>
                 <div class="kpi-num">{total_veh}</div>
                 <div class="kpi-sub">Vehicles Detected</div>
@@ -2571,7 +2687,7 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
     with k2:
         st.markdown(
             f"""
-            <div class="kpi-card">
+            <div class="kpi-card kpi-accent-green">
                 <div class="kpi-title">Auto-Rickshaws</div>
                 <div class="kpi-num kpi-num-green">{counts.get('auto_rickshaw', 0)}</div>
                 <div class="kpi-sub">CCTV Fine-Tuned</div>
@@ -2582,7 +2698,7 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
     with k3:
         st.markdown(
             f"""
-            <div class="kpi-card">
+            <div class="kpi-card kpi-accent-blue">
                 <div class="kpi-title">Passenger Cars</div>
                 <div class="kpi-num kpi-num-blue">{counts.get('car', 0)}</div>
                 <div class="kpi-sub">CCTV Calibrated</div>
@@ -2593,7 +2709,7 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
     with k4:
         st.markdown(
             f"""
-            <div class="kpi-card">
+            <div class="kpi-card kpi-accent-amber">
                 <div class="kpi-title">Two-Wheelers</div>
                 <div class="kpi-num kpi-num-amber">{counts.get('motorcycle', 0)}</div>
                 <div class="kpi-sub">Motorcycles/Scooters</div>
@@ -2604,7 +2720,7 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
     with k5:
         st.markdown(
             f"""
-            <div class="kpi-card">
+            <div class="kpi-card kpi-accent-purple">
                 <div class="kpi-title">Heavy Transit</div>
                 <div class="kpi-num kpi-num-purple">{heavy_count}</div>
                 <div class="kpi-sub">Buses & Trucks</div>
@@ -2615,7 +2731,7 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
     with k6:
         st.markdown(
             f"""
-            <div class="kpi-card">
+            <div class="kpi-card kpi-accent-lime">
                 <div class="kpi-title">Idle Burn Potential</div>
                 <div class="kpi-num kpi-num-green">{instant_burn:.1f}</div>
                 <div class="kpi-sub">g CO₂ if fleet idles 1 min</div>

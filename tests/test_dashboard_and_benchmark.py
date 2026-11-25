@@ -75,8 +75,8 @@ def test_dashboard_image_intelligence_mode_renders_safely():
     assert "Image Intelligence" in at.title[0].value
 
 
-def test_dashboard_image_intelligence_preset_and_advisory():
-    """Verify 1-click preset execution, multi-class perception, and AI advisory generation."""
+def test_dashboard_image_intelligence_advisory_flow():
+    """Verify upload-path perception, multi-class detection, and AI advisory generation."""
     at = AppTest.from_file(str(REPO_ROOT / "dashboard" / "app.py"))
     at.run(timeout=10)
     assert not at.exception
@@ -86,17 +86,14 @@ def test_dashboard_image_intelligence_preset_and_advisory():
     at.run(timeout=10)
     assert not at.exception
 
-    # Click Moving Auto-Rickshaw preset
-    btn_clicked = False
-    for b in at.button:
-        if "Moving Auto-Rickshaw" in b.label:
-            b.click()
-            btn_clicked = True
-            break
-    assert btn_clicked, "Preset button for Moving Auto-Rickshaw must be present"
+    # Simulate an uploaded photograph by seeding session state (no demo presets in the UI)
+    sample = REPO_ROOT / "assets_workspace" / "samples" / "sample_junction_moving_auto.jpg"
+    at.session_state["active_img_bytes"] = sample.read_bytes()
+    at.session_state["active_img_name"] = sample.name
+    at.session_state["img_source_type"] = "uploaded"
 
-    at.run(timeout=10)
-    assert not at.exception, f"App raised exception on preset click: {at.exception}"
+    at.run(timeout=30)
+    assert not at.exception, f"App raised exception on image processing: {at.exception}"
 
     # Verify session state and results
     assert "img_result" in at.session_state

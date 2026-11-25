@@ -175,26 +175,26 @@ This project retrofits existing municipal CCTV traffic camera fleets into a real
 - **Accurate Model Taxonomy:** Automatically intersects configured `active_classes` with loaded weights; transparently reports missing classes (e.g. stock COCO `auto_rickshaw` limitation) without hallucinating detections.
 - **Strict Guardrails:** Guaranteed absence of fabricated speeds, accelerations, motion states, or emissions for still images.
 - **Streamlit Integration (`dashboard/app.py`):** Sidebar navigation mode offering image upload, confidence slider, process button, original vs annotated preview, KPI cards, class breakdown chart, detection table, and JPG/CSV/JSON exports.
-- **Test Suite Health:** **73/73 tests passing** (`pytest -q` in ~8s) with dedicated coverage in `tests/test_image_intelligence.py` and the Streamlit preset/advisory integration test.
+- **Test Suite Health:** **73/73 tests passing** (`pytest -q` in ~8s) with dedicated coverage in `tests/test_image_intelligence.py` and the Streamlit upload/advisory integration test.
 - **Stable-Camera Video Validation:** Re-ran the full pipeline on the 45s junction clip (frame skip 2) in ≈44s cold start (26.6 FPS model-only benchmark, ≈15 FPS end-to-end): 60 unique tracks, 2,002 car / 861 motorcycle / 749 auto-rickshaw observations, 61.9 g CO₂ accumulated, 21 counted vehicles in the 60s window, no idle/stop events (free-flowing traffic), rules advisory correctly returned `no_action`.
 - **Cross-Camera Generalization Check:** Four unrelated stable-camera stills (Delhi aerial, Hyderabad flyover, Rishikesh bus/motorcycles, old-city truck) degraded sharply — nearly all detections collapsed to `car`, buses/trucks were missed, and billboard text produced false positives. The model is viewpoint-specific; per-camera fine-tuning is required for new deployments.
 - **CO₂ KPI Correction:** The corridor total now sums each track's final cumulative grams instead of reporting the single highest track, which understated the 45s clip (9.7 g → 61.9 g).
 
 ### ✅ Operations Console UI Refresh (Streamlit)
-- **Theme System:** Added `.streamlit/config.toml` with a dark mint-accented theme, plus a consolidated design layer in `dashboard/app.py` (Inter typography, radial background, cards, chips, status pills, custom scroll and widget styling).
+- **Theme System:** Added `.streamlit/config.toml` with a dark violet-accented theme, plus a consolidated design layer in `dashboard/app.py` (Inter typography, radial background, cards, chips, status pills, custom scroll and widget styling).
 - **Hero & KPI Band:** Status chips for edge/CCTV/privacy/factor provenance and five custom stat cards (vehicles, cumulative CO₂, idle share, top choke zone, telemetry volume).
 - **Interactive Quick Actions:** Refresh cached telemetry (with last-refresh timestamp in the sidebar), export the active telemetry CSV, and generate a deterministic advisory from the live corridor window.
 - **Bug-Fix Pass:** Time-window Start/Midpoint/End jumps now use `on_click` callbacks (previously crashed with a Streamlit session-state error), advisory confirmations persist across reruns, stale image results are cleared when validation fails, and changing the optional API key no longer re-triggers inference.
 - **Declutter:** Removed the no-op What-If jump button, the misleading annualised-extrapolation card, the duplicate "Original Photograph" tab, the duplicate video-viewport sidebar card, and the technical video metadata strip (filename / size / codec). The choke-point table now auto-sizes instead of reserving empty rows, image identity hashes file bytes instead of filename/size, and the tracked-vehicle foot reads "telemetry span" to avoid implying the playback duration.
 - **Visual Analytics:** Plotly kinematic-state donut with observation counts and a custom 4×4 spatial choke heatmap, replacing generic Streamlit bar charts.
-- **Motion & Interaction Refresh:** Animated radial backdrop, glass hero with gradient headline and radar-orbit motif, staggered KPI entrance, hover lift/glow + sheen sweep on stat and directive cards, shine sweep and press feedback on buttons, mint hover/selected states for sidebar nav and tabs, image zoom on hover, slider/input focus glow, and Plotly transition animations. All motion is suppressed under `prefers-reduced-motion`.
+- **Motion & Interaction Refresh:** Animated radial backdrop, glass hero with gradient headline and radar-orbit motif, staggered KPI entrance, hover lift/glow + sheen sweep on stat and directive cards, shine sweep and press feedback on buttons, violet hover/selected states for sidebar nav and tabs, image zoom on hover, slider/input focus glow, and Plotly transition animations. All motion is suppressed under `prefers-reduced-motion`.
 - **Chart Consistency:** Replaced the remaining default Streamlit bar charts (fleet taxonomy, image quadrants) with themed Plotly bars using the class colour palette and hover tooltips.
 - **Synced Playback Controls:** AI-overlay / raw-feed stream switch, overlay re-render action, Start / Midpoint / End time-window jumps, and active-window row counts.
 - **Operator Directive Feed:** Compact directive cards with mode/status pills, savings/confidence, **Dispatch** and **Dismiss** actions, mode filters, and a collapsed archive for older records.
 - **What-If Lab:** Reset-to-baseline callback, scenario KPI band, per-class avoided-CO₂ chart, audit table, and CSV export.
-- **Image Intelligence Polish:** Preset gallery, clear-result action, advisory publish-to-log action, advisory JSON export, and compact hero status chips.
-- **Image Sidebar (Lean):** Deduplicated the engine sidebar into a compact status card, collapsible model/taxonomy details, active-image summary, and two unique actions — **↻ Re-run analysis** and **♻ Reload weights**. Preset loading, clearing, publishing, and exports live only in the main panel to avoid duplicate controls.
-- **Upload & Accuracy Verification:** Exercised the real browser upload path on bundled samples. Moving auto-rickshaw: 5 detections (3 cars + 2 auto-rickshaws, mean confidence 0.85). Parked service auto: 7 detections (4 cars + 1 auto + 2 motorcycles, mean 0.80). Both match the frames. The out-of-domain Delhi aerial image was removed from the presets after heavy under-detection and misclassification (3 low-confidence cars on a dense top-down 1920×1080 scene); the file remains on disk for limitation testing.
+- **Image Intelligence Polish:** Optional bundled-sample expander, clear-result action, advisory publish-to-log action, advisory JSON export, and compact hero status chips.
+- **Image Sidebar (Lean):** Deduplicated the engine sidebar into a compact status card, collapsible model/taxonomy details, active-image summary, and two unique actions — **↻ Re-run analysis** and **♻ Reload weights**. Uploading, clearing, publishing, and exports live only in the main panel to avoid duplicate controls.
+- **Upload & Accuracy Verification:** Exercised the real browser upload path on bundled samples. Moving auto-rickshaw: 5 detections (3 cars + 2 auto-rickshaws, mean confidence 0.85). Parked service auto: 7 detections (4 cars + 1 auto + 2 motorcycles, mean 0.80). Both match the frames. The out-of-domain Delhi aerial image was removed from the demo samples after heavy under-detection and misclassification (3 low-confidence cars on a dense top-down 1920×1080 scene); the file remains on disk for limitation testing.
 - **Verification:** All 73 tests pass; visually validated in headless Chrome at 1600px width.
 
 
@@ -203,9 +203,9 @@ This project retrofits existing municipal CCTV traffic camera fleets into a real
 ## 3. What HAS TO BE DONE (Pending Tasks & Open Gaps)
 
 ### ✅ Priority 1: Milestone M8 — Demo Video Recording & Git Release Freeze [COMPLETE]
-- **Demo Backup Video:** `artifacts/demo_backup.mp4` — 120.5s, 1600×1000 H.264 at 2 fps, re-recorded end-to-end from the final motion-refreshed UI (video operations KPIs, live advisory generation, choke heatmap, operator dispatch, What-If lab, and Image Intelligence preset).
+- **Demo Backup Video:** `artifacts/demo_backup.mp4` — 120.5s, 1600×1000 H.264 at 2 fps, re-recorded end-to-end from the final motion-refreshed UI (video operations KPIs, live advisory generation, choke heatmap, operator dispatch, What-If lab, and Image Intelligence flow).
 - **Git Tag:** `demo-v1`.
-- **Upload Path & Preset Accuracy:** Verified the real browser upload flow on bundled samples. Moving auto-rickshaw: 5 detections (3 cars + 2 auto-rickshaws; mean confidence 0.85). Parked service auto: 7 detections (4 cars + 1 auto + 2 motorcycles; mean 0.80) — both visually correct. The Delhi aerial sample was removed from the preset gallery after producing heavy under-detection/misclassification on a dense top-down scene (3 low-confidence cars); the image file is retained on disk for limitation testing.
+- **Upload Path Accuracy:** Verified the real browser upload flow on bundled samples. Moving auto-rickshaw: 5 detections (3 cars + 2 auto-rickshaws; mean confidence 0.85). Parked service auto: 7 detections (4 cars + 1 auto + 2 motorcycles; mean 0.80) — both visually correct. The Delhi aerial sample was removed from the demo sample set after producing heavy under-detection/misclassification on a dense top-down scene (3 low-confidence cars); the image file is retained on disk for limitation testing.
 
 ---
 
@@ -241,8 +241,8 @@ When handing off this project to another LLM, enforce the following non-negotiab
 | `dispatcher/rules_fallback.py` | Complete | Deterministic rule-based dispatcher fallback |
 | `dispatcher/llm_dispatcher.py` | Complete | Schema-constrained LLM client + Python CO2 inject |
 | `dashboard/app.py` | Complete | Streamlit command UI with Video Twin & Image Intelligence modes |
-| `.streamlit/config.toml` | Complete | Dark mint-accented Streamlit theme and headless server defaults |
-| `assets_workspace/samples/*.jpg` | Complete | Bundled CCTV presets for 1-click Image Intelligence demos |
+| `.streamlit/config.toml` | Complete | Dark violet-accented Streamlit theme and headless server defaults |
+| `assets_workspace/samples/*.jpg` | Complete | Bundled CCTV stills used by accuracy tests and demos |
 | `tests/test_image_intelligence.py` | Complete | Unit & integration tests for single-image perception backend |
 | `dashboard-web/src/components/MunicipalDispatchFeed.tsx` | Complete | GenAI advisory feed & ATCS/SCATS dispatch control center |
 | `scripts/run_pipeline.py` | Complete | Video $\rightarrow$ tracking $\rightarrow$ kinematics $\rightarrow$ `telemetry.parquet` |

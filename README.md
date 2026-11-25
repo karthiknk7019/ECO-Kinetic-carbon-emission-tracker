@@ -107,21 +107,21 @@ streamlit run dashboard/app.py
 ```
 Open `http://localhost:8501` in your browser. The redesigned operations console provides:
 1. **Junction Video Operations**: A hero status band, five custom KPI cards, a Plotly kinematic-state donut, an interactive 4×4 choke heatmap, synced CCTV playback with Start / Midpoint / End jump controls, operator directive cards with **Dispatch** / **Dismiss** actions, and a What-If counterfactual lab with reset and CSV export.
-2. **Image Intelligence**: 1-click CCTV presets, single-frame perception, CPCB carbon snapshot, an Edge AI municipal advisory, and controls to publish the advisory into the municipal directive log.
+2. **Image Intelligence**: single-frame perception from an uploaded photograph, CPCB carbon snapshot, an Edge AI municipal advisory, and controls to publish the advisory into the municipal directive log.
 
 **Quick actions** on the video console:
 - **Refresh data** — invalidate cached telemetry and reload artifacts.
 - **Export telemetry** — download the active ledger as CSV.
 - **Generate advisory** — run the deterministic ATCS dispatcher against the current corridor window and append a new directive.
 
-**Interaction layer:** the console uses CSS-only motion — an animated backdrop, glass hero with a radar-orbit motif, staggered KPI entrance, hover lift/glow and sheen on cards, shine and press feedback on buttons, mint hover/selected states for nav and tabs, media zoom, focus glow on sliders and inputs, and smooth Plotly transitions. All motion is disabled automatically under `prefers-reduced-motion`.
+**Interaction layer:** the console uses CSS-only motion — an animated backdrop, glass hero with a radar-orbit motif and orbiting satellites, staggered KPI entrance, hover lift/glow and sheen on cards, shine and press feedback on buttons, violet hover/selected states for nav and tabs, media zoom, focus glow on sliders and inputs, and smooth Plotly transitions. All motion is disabled automatically under `prefers-reduced-motion`.
 
 ### Step 5b: Traffic Image Intelligence (Single-Frame Analysis)
 
 Users can analyze stationary intersection photographs without requiring the continuous video pipeline:
 - **Workflow**:
   1. Select **Image Intelligence** in the sidebar.
-  2. Click a **1-click CCTV preset** (moving auto-rickshaw or parked service auto), or upload a custom photograph (`.jpg`, `.jpeg`, `.png`, or `.webp`, max 20 MB).
+  2. Upload a photograph (`.jpg`, `.jpeg`, `.png`, or `.webp`, max 20 MB).
   3. Adjust the detection confidence threshold (default: `0.25`).
   4. Click **Process image & generate advisory** to run CPU-only YOLO inference and the deterministic dispatcher.
   5. Inspect annotated bounding boxes, fleet KPIs, the carbon advisory, the image-quadrant distribution, and the per-class CPCB index.
