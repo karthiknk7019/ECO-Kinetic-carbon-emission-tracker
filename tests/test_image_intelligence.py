@@ -208,3 +208,19 @@ def test_real_traffic_image_inference(analyzer):
     # Counts consistency
     active_sum = sum(res_low_conf["per_class_counts"].values())
     assert active_sum == res_low_conf["total_detections"]
+
+
+def test_exif_orientation_is_applied_to_uploaded_bytes():
+    """Phone uploads carry an EXIF rotation tag; decoding must honour it."""
+    import io
+
+    from PIL import Image
+
+    src = Image.new("RGB", (64, 32), (120, 120, 120))
+    exif = src.getexif()
+    exif[274] = 6  # Rotate 90° clockwise on display
+    buf = io.BytesIO()
+    src.save(buf, format="JPEG", exif=exif)
+
+    _, (h, w, _) = validate_and_decode_image(buf.getvalue())
+    assert (w, h) == (32, 64), "EXIF orientation 6 should swap stored width/height"

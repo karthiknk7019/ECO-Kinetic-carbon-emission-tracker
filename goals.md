@@ -130,7 +130,7 @@ Multi-camera fusion, RTSP ingestion (mention as thin adapter in docs only),homog
 - **Hero/KPIs**: Status chips and five custom stat cards replacing plain `st.metric` blocks.
 - **Quick Actions**: Refresh telemetry (timestamp shown in sidebar), export telemetry CSV, generate advisory from live corridor.
 - **Bug Fixes / Cleanup**: Time-window jump buttons fixed with `on_click` callbacks; advisory success persists across reruns; stale image results cleared on validation failure; API-key edits no longer retrigger inference. Removed the no-op What-If jump button, misleading annualised card, duplicate Original Photograph tab, duplicate video-viewport sidebar card, and technical video metadata strip; choke table auto-sizes and the vehicle KPI foot now reads "telemetry span".
-- **Analytics**: Plotly kinematic-state donut and custom 4×4 spatial choke heatmap. Fleet-taxonomy and approach-quadrant bars are now themed Plotly charts with class colours and hover tooltips.
+- **Analytics**: Plotly kinematic-state donut and custom 4×4 spatial choke heatmap. Fleet-taxonomy and image-quadrant bars use themed Plotly charts with class colours and hover tooltips.
 - **Motion & Interaction**: Animated backdrop, glass hero with gradient headline and radar orbit, staggered KPI entrance, hover lift/glow and sheen on cards, button shine/press feedback, nav and tab hover states, image zoom, and Plotly transitions. Respects `prefers-reduced-motion`.
 - **Playback**: AI-overlay/raw-feed switch, overlay re-render, Start/Midpoint/End time-window jumps.
 - **Directive Feed**: Mode/status pills, Dispatch/Dismiss operator actions, mode filter, collapsed archive.

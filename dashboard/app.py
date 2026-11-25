@@ -32,7 +32,6 @@ from perception.image_inference import (
 )
 from dispatcher.llm_dispatcher import append_directive_to_log, dispatch
 from dispatcher.schema import CorridorPayload, Directive, TopChokeZone
-from dispatcher.rules_fallback import _determine_lane_from_zone
 
 
 @st.cache_resource
@@ -1163,6 +1162,14 @@ CLASS_COLORS = {
     "truck": "#fb7185",
 }
 
+CLASS_LABELS = {
+    "car": "Car",
+    "motorcycle": "Motorcycle",
+    "auto_rickshaw": "Auto-rickshaw",
+    "bus": "Bus",
+    "truck": "Truck",
+}
+
 
 def _html(markup: str) -> None:
     """Render custom HTML without Markdown mistaking indented lines for code blocks."""
@@ -1300,12 +1307,12 @@ def make_choke_heatmap(matrix: np.ndarray) -> go.Figure:
 
 
 def make_fleet_bar(class_counts: Dict[str, int]) -> go.Figure:
-    order = [c for c in ["car", "auto_rickshaw", "motorcycle", "bus", "truck"] if c in class_counts]
+    order = [c for c in ["car", "auto_rickshaw", "motorcycle", "bus", "truck"] if int(class_counts.get(c, 0)) > 0]
     values = [int(class_counts[c]) for c in order]
     fig = _base_figure(240)
     fig.add_trace(
         go.Bar(
-            x=order,
+            x=[CLASS_LABELS.get(c, c) for c in order],
             y=values,
             marker=dict(color=[CLASS_COLORS.get(c, "#38bdf8") for c in order], line=dict(width=0)),
             text=values,
@@ -2315,8 +2322,8 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
     with st.container(key="hero"):
         st.title("Traffic Image Intelligence")
         st.caption(
-            "Upload one junction photograph — or load a curated CCTV sample — to inspect vehicle mix, "
-            "run deterministic CPCB carbon accounting, and generate a municipal advisory."
+            "Upload one junction photograph — or load a bundled CCTV still — to inspect the vehicle mix, "
+            "estimate snapshot idle-burn potential, and generate a municipal advisory."
         )
         _html(
             """
@@ -2357,7 +2364,7 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
     }
 
     st.markdown("##### ⚡ Quick test presets")
-    st.caption("Instant local samples — no upload required. Each preset runs real inference on the bundled CCTV photography.")
+    st.caption("Bundled CCTV stills — runs real local inference.")
     p_col1, p_col2 = st.columns(2)
     preset_selected = None
 
@@ -2454,34 +2461,19 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
             try:
                 result = analyzer.analyze(image_bytes, conf=conf_thresh)
 
-                # Spatial Choke Analysis & Approach Quadrants
+                # Image-quadrant distribution (layout only, not road approach)
                 h_img = result["image_dimensions"]["height"]
                 w_img = result["image_dimensions"]["width"]
-                zones: Dict[str, int] = {}
-                quadrants = {"North (N)": 0, "South (S)": 0, "East (E)": 0, "West (W)": 0}
+                region_counts = {"Upper-left": 0, "Upper-right": 0, "Lower-left": 0, "Lower-right": 0}
 
                 for r in result["detection_records"]:
                     bbox = r["bbox"]
                     cx, cy = (bbox[0] + bbox[2]) / 2.0, (bbox[1] + bbox[3]) / 2.0
-                    r_idx = min(3, int(cy / h_img * 4))
-                    c_idx = min(3, int(cx / w_img * 4))
-                    zid = f"z_r{r_idx}_c{c_idx}"
-                    zones[zid] = zones.get(zid, 0) + 1
+                    region = f"{'Upper' if cy < h_img / 2.0 else 'Lower'}-{'left' if cx < w_img / 2.0 else 'right'}"
+                    region_counts[region] += 1
+                    r["image_region"] = region
 
-                    lane = _determine_lane_from_zone(zid)
-                    lane_name = {
-                        "N": "North (N)",
-                        "S": "South (S)",
-                        "E": "East (E)",
-                        "W": "West (W)",
-                    }.get(lane, "North (N)")
-                    quadrants[lane_name] += 1
-                    r["approach_quadrant"] = lane_name
-
-                top_z = max(zones.items(), key=lambda x: x[1])[0] if zones else "z_r1_c1"
-                top_lane = _determine_lane_from_zone(top_z)
-
-                # CPCB BS-VI Deterministic Idle Burn Rate
+                # CPCB BS-VI Deterministic Idle Burn Potential
                 em_factors = load_emission_factors()
                 classes_cfg = em_factors.get("classes", {})
                 idle_rates = {
@@ -2491,13 +2483,6 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
                     "bus": float(classes_cfg.get("bus", {}).get("idle_g_per_min", 45.0)),
                     "truck": float(classes_cfg.get("truck", {}).get("idle_g_per_min", 55.0)),
                 }
-                cruise_rates = {
-                    "car": float(classes_cfg.get("car", {}).get("cruise_g_per_km", 150.0)),
-                    "motorcycle": float(classes_cfg.get("motorcycle", {}).get("cruise_g_per_km", 80.0)),
-                    "auto_rickshaw": float(classes_cfg.get("auto_rickshaw", {}).get("cruise_g_per_km", 95.0)),
-                    "bus": float(classes_cfg.get("bus", {}).get("cruise_g_per_km", 1000.0)),
-                    "truck": float(classes_cfg.get("truck", {}).get("cruise_g_per_km", 900.0)),
-                }
 
                 counts = result["per_class_counts"]
                 total_veh = result["total_detections"]
@@ -2505,20 +2490,18 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
                 heavy_count = counts.get("bus", 0) + counts.get("truck", 0)
                 heavy_density = (heavy_count / total_veh) if total_veh > 0 else 0.0
 
-                # Construct CorridorPayload
+                # Snapshot payload: only quantities observable in a single frame.
+                # Stop events, idle ratio, and choke dwell are deliberately NOT invented.
                 payload = CorridorPayload(
                     intersection_id="junction_01",
                     window_s=60.0,
                     co2_g_total=round(instant_idle_burn_g_min, 2),
                     co2_g_per_min=round(instant_idle_burn_g_min, 2),
-                    idle_ratio=round(min(0.85, max(0.20, total_veh * 0.08)), 2) if total_veh > 0 else 0.0,
+                    idle_ratio=0.0,
                     heavy_vehicle_density=round(heavy_density, 3),
                     n_counted_vehicles=total_veh,
-                    n_stop_events=max(1, total_veh) if total_veh > 0 else 0,
-                    top_choke_zone=TopChokeZone(
-                        id=top_z,
-                        idle_vehicle_minutes=round(max(0.5, total_veh * 0.75), 2),
-                    ) if total_veh > 0 else None,
+                    n_stop_events=0,
+                    top_choke_zone=None,
                 )
 
                 # Dispatch Directive (ad-hoc analysis, not yet published to the municipal log)
@@ -2532,11 +2515,8 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
 
                 result["directive"] = directive.model_dump()
                 result["instant_idle_burn_g_min"] = instant_idle_burn_g_min
-                result["quadrant_counts"] = quadrants
-                result["top_zone"] = top_z
-                result["top_lane"] = top_lane
+                result["quadrant_counts"] = region_counts
                 result["idle_rates"] = idle_rates
-                result["cruise_rates"] = cruise_rates
 
                 st.session_state["img_result"] = result
                 st.session_state["img_key"] = file_key
@@ -2561,20 +2541,19 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
 
     # Image source status header
     active_filename = st.session_state.get("img_filename", "traffic_photo.jpg")
-    dims = result.get("image_dimensions", {})
-    w_px = dims.get("width", 0)
-    h_px = dims.get("height", 0)
-    latency_ms = result.get("processing_latency_ms", 0.0)
-
-    st.caption(
-        f"📷 **Active Image**: `{active_filename}` • **Resolution**: {w_px}×{h_px} px • "
-        f"**Latency**: {latency_ms:.0f} ms • **Inference Device**: `{result.get('device', 'cpu').upper()}`"
-    )
 
     counts = result.get("per_class_counts", {})
     total_veh = result.get("total_detections", 0)
     heavy_count = counts.get("bus", 0) + counts.get("truck", 0)
     instant_burn = result.get("instant_idle_burn_g_min", 0.0)
+
+    if total_veh == 0:
+        st.warning(
+            f"No vehicles were detected above confidence threshold {conf_thresh:.2f}. "
+            "Try lowering the confidence threshold or upload a clearer junction photograph."
+        )
+        render_image_sidebar(analyzer)
+        return
 
     # High-Impact Fleet KPI Cards
     k1, k2, k3, k4, k5, k6 = st.columns(6)
@@ -2594,7 +2573,7 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
             f"""
             <div class="kpi-card">
                 <div class="kpi-title">Auto-Rickshaws</div>
-                <div class="kpi-num kpi-num-green">🛺 {counts.get('auto_rickshaw', 0)}</div>
+                <div class="kpi-num kpi-num-green">{counts.get('auto_rickshaw', 0)}</div>
                 <div class="kpi-sub">CCTV Fine-Tuned</div>
             </div>
             """,
@@ -2605,7 +2584,7 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
             f"""
             <div class="kpi-card">
                 <div class="kpi-title">Passenger Cars</div>
-                <div class="kpi-num kpi-num-blue">🚗 {counts.get('car', 0)}</div>
+                <div class="kpi-num kpi-num-blue">{counts.get('car', 0)}</div>
                 <div class="kpi-sub">CCTV Calibrated</div>
             </div>
             """,
@@ -2616,7 +2595,7 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
             f"""
             <div class="kpi-card">
                 <div class="kpi-title">Two-Wheelers</div>
-                <div class="kpi-num kpi-num-amber">🏍️ {counts.get('motorcycle', 0)}</div>
+                <div class="kpi-num kpi-num-amber">{counts.get('motorcycle', 0)}</div>
                 <div class="kpi-sub">Motorcycles/Scooters</div>
             </div>
             """,
@@ -2627,7 +2606,7 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
             f"""
             <div class="kpi-card">
                 <div class="kpi-title">Heavy Transit</div>
-                <div class="kpi-num kpi-num-purple">🚌 {heavy_count}</div>
+                <div class="kpi-num kpi-num-purple">{heavy_count}</div>
                 <div class="kpi-sub">Buses & Trucks</div>
             </div>
             """,
@@ -2637,12 +2616,20 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
         st.markdown(
             f"""
             <div class="kpi-card">
-                <div class="kpi-title">Idle Burn Rate</div>
+                <div class="kpi-title">Idle Burn Potential</div>
                 <div class="kpi-num kpi-num-green">{instant_burn:.1f}</div>
-                <div class="kpi-sub">g CO₂ / min (CPCB)</div>
+                <div class="kpi-sub">g CO₂ if fleet idles 1 min</div>
             </div>
             """,
             unsafe_allow_html=True,
+        )
+
+    mean_conf = float(result.get("mean_confidence", 0.0))
+    if mean_conf < 0.5:
+        st.warning(
+            f"Low-confidence scene: mean detection confidence is {mean_conf * 100:.0f}%. "
+            "Counts are indicative only — verify manually or raise the confidence threshold "
+            "so out-of-domain false positives are filtered out."
         )
 
     # Edge AI Municipal Traffic & Carbon Advisory Container
@@ -2651,17 +2638,19 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
         mode = directive.get("mode", "rules_fallback")
         is_llm = (mode == "llm")
         badge_html = (
-            '<span class="badge-llm">🤖 LIVE GEMINI DISPATCH</span>'
+            '<span class="badge-llm">🤖 GEMINI</span>'
             if is_llm
-            else '<span class="badge-rules">⚙️ ATCS LOCAL ENGINE (DETERMINISTIC FALLBACK)</span>'
+            else '<span class="badge-rules">⚙️ LOCAL RULES ENGINE</span>'
         )
         actions = directive.get("actions", [])
+        is_no_action = True
         if actions:
             action_parts = []
             for a in actions:
                 raw_type = a.get("type", "")
                 val = getattr(raw_type, "value", str(raw_type))
                 a_type = val.split(".")[-1].replace("_", " ").upper()
+                is_no_action = is_no_action and a_type == "NO ACTION"
                 sec = a.get("seconds")
                 lane = a.get("lane")
                 tgt = a.get("target_class")
@@ -2669,31 +2658,29 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
                 if sec is not None:
                     desc += f" ({sec}s)"
                 if lane:
-                    desc += f" on {lane} Approach"
+                    desc += f" on {lane} approach"
                 if tgt:
                     desc += f" for {tgt}"
                 action_parts.append(desc)
-            action_str = ", ".join(action_parts)
+            action_str = "NO SIGNAL CHANGE" if is_no_action else ", ".join(action_parts)
         else:
-            action_str = "NO ACTION REQUIRED (Balanced Flow)"
+            action_str = "NO SIGNAL CHANGE"
 
         co2_saved = directive.get("estimated_co2_saved_g", 0.0)
         confidence = directive.get("confidence", 0.0) * 100.0
-        rationale = directive.get("rationale", "Traffic corridor flow is nominal.")
-        directive_id = directive.get("directive_id", "N/A")[:8]
-        top_lane = result.get("top_lane", "N")
-        top_zone = result.get("top_zone", "N/A")
+        rationale = (
+            "Still-frame snapshot: this photograph carries no speed, stop, or dwell history, so idle ratio, "
+            "stop events, and choke dwell are unavailable. With no measured congestion evidence, no signal "
+            "change is justified. The counts and idle-burn figure describe fleet composition only."
+        )
 
         st.markdown(
             f"""
             <div class="ai-advisory-container">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
                     <div style="font-size: 16px; font-weight: 700; color: #f8fafc; display: flex; align-items: center; gap: 10px;">
-                        <span>🤖 Edge AI Municipal Traffic & Carbon Advisory</span>
+                        <span>🤖 Municipal Traffic & Carbon Advisory</span>
                         {badge_html}
-                    </div>
-                    <div style="font-size: 12px; color: #94a3b8;">
-                        Intersection: <code>junction_01</code> • Directive ID: <code>{directive_id}</code>
                     </div>
                 </div>
                 <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 14px; margin-bottom: 14px; background: rgba(0,0,0,0.30); padding: 14px; border-radius: 8px;">
@@ -2703,19 +2690,18 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
                     </div>
                     <div>
                         <div style="font-size: 11px; text-transform: uppercase; color: #94a3b8; font-weight: 600;">Avoided Carbon</div>
-                        <div style="font-size: 17px; font-weight: 700; color: #10b981;">+{co2_saved:.2f} g CO₂</div>
+                        <div style="font-size: 17px; font-weight: 700; color: #10b981;">{co2_saved:.2f} g CO₂</div>
                     </div>
                     <div>
-                        <div style="font-size: 11px; text-transform: uppercase; color: #94a3b8; font-weight: 600;">Confidence</div>
-                        <div style="font-size: 17px; font-weight: 700; color: #fde047;">{confidence:.1f}%</div>
+                        <div style="font-size: 11px; text-transform: uppercase; color: #94a3b8; font-weight: 600;">Decision Basis</div>
+                        <div style="font-size: 17px; font-weight: 700; color: #fde047;">{"LLM · " + f"{confidence:.0f}%" if is_llm else "Deterministic rules"}</div>
                     </div>
                 </div>
                 <div style="font-size: 13px; color: #cbd5e1; line-height: 1.5; background: rgba(255,255,255,0.04); padding: 12px 16px; border-radius: 6px; border-left: 3px solid #38bdf8;">
-                    <strong>Municipal Engineering Rationale:</strong> {rationale}
+                    <strong>Rationale:</strong> {rationale}
                 </div>
-                <div style="margin-top: 10px; font-size: 11px; color: #64748b; display: flex; justify-content: space-between; flex-wrap: wrap;">
-                    <span>🛡️ <strong>CPCB BS-VI Guardrail:</strong> Carbon calculations performed deterministically in Python — zero LLM hallucination.</span>
-                    <span>Primary Choke Axis: <strong>{top_lane} Approach</strong> ({top_zone})</span>
+                <div style="margin-top: 10px; font-size: 11px; color: #64748b;">
+                    🛡️ Carbon math is computed deterministically in Python. A still frame has no speed or stop history, so no signal change is inferred from it.
                 </div>
             </div>
             """,
@@ -2759,14 +2745,14 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
     tab_annotated, tab_side_by_side, tab_spatial = st.tabs([
         "🔍 Perception Overlay",
         "🖼️ Side-by-Side Comparison",
-        "🗺️ Spatial Approach Quadrants",
+        "🗺️ Spatial Distribution",
     ])
 
     with tab_annotated:
         st.image(
             result["annotated_image"],
             width="stretch",
-            caption=f"High-contrast bounding boxes & confidence badges ({total_veh} detections above {conf_thresh:.2f} conf)",
+            caption=f"Bounding boxes & confidence badges · {total_veh} detections at conf ≥ {conf_thresh:.2f}",
         )
 
     with tab_side_by_side:
@@ -2779,8 +2765,8 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
             st.image(result["annotated_image"], width="stretch")
 
     with tab_spatial:
-        st.subheader("Spatial Approach Distribution (4 Cardinal Zones)")
-        st.caption("Distribution of detected vehicles across cardinal approach corridors.")
+        st.subheader("Spatial Distribution (Image Quadrants)")
+        st.caption("Detections grouped by image quadrant — a layout view, not a road-approach measurement.")
         q_counts = result.get("quadrant_counts", {})
         q_cols = st.columns(4)
         for i, (quad_name, quad_cnt) in enumerate(q_counts.items()):
@@ -2809,29 +2795,20 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
         st.subheader("CPCB BS-VI Emission Index (Snapshot)")
         fleet_rows = []
         idle_r = result.get("idle_rates", {})
-        cruise_r = result.get("cruise_rates", {})
         for cls_name in ["car", "auto_rickshaw", "motorcycle", "bus", "truck"]:
             cnt = counts.get(cls_name, 0)
+            if cnt <= 0:
+                continue
             share = (cnt / total_veh * 100.0) if total_veh > 0 else 0.0
             irate = idle_r.get(cls_name, 0.0)
-            crate = cruise_r.get(cls_name, 0.0)
-            burn = cnt * irate
             fleet_rows.append({
-                "Vehicle Class": cls_name,
+                "Vehicle Class": CLASS_LABELS.get(cls_name, cls_name),
                 "Count": cnt,
                 "Share (%)": f"{share:.1f}%",
                 "Idle Rate (g/min)": f"{irate:.1f}",
-                "Cruise Rate (g/km)": f"{crate:.1f}",
-                "Idle Burn (g/min)": f"{burn:.1f}",
+                "1-min Burn Potential (g)": f"{cnt * irate:.1f}",
             })
-        st.dataframe(pd.DataFrame(fleet_rows), width="stretch")
-
-    # Empty State Warning
-    if total_veh == 0:
-        st.warning(
-            f"No vehicles were detected above confidence threshold {conf_thresh:.2f}. "
-            "Try lowering the confidence threshold slider or upload an alternative image angle."
-        )
+        st.dataframe(pd.DataFrame(fleet_rows), width="stretch", hide_index=True)
 
     st.divider()
 
@@ -2842,13 +2819,17 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
         class_options = ["All Classes"] + [c for c in ["auto_rickshaw", "car", "motorcycle", "bus", "truck"] if counts.get(c, 0) > 0]
         f_col1, f_col2 = st.columns([1.0, 2.0])
         with f_col1:
-            selected_filter = st.selectbox("Filter by Class", class_options, index=0)
+            selected_filter = st.selectbox(
+                "Filter by Class",
+                class_options,
+                index=0,
+                format_func=lambda c: "All classes" if c == "All Classes" else CLASS_LABELS.get(c, c),
+            )
 
         table_rows = []
         for r in records:
             if selected_filter != "All Classes" and r["class_name"] != selected_filter:
                 continue
-            bbox = r["bbox"]
             emoji = {
                 "auto_rickshaw": "🛺",
                 "car": "🚗",
@@ -2858,56 +2839,51 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
             }.get(r["class_name"], "🚘")
             table_rows.append({
                 "Index": f"#{r['detection_index']}",
-                "Class": f"{emoji} {r['class_name']}",
+                "Class": f"{emoji} {CLASS_LABELS.get(r['class_name'], r['class_name'])}",
                 "Confidence": f"{r['confidence'] * 100:.1f}%",
-                "Approach": r.get("approach_quadrant", "N/A"),
-                "Bounding Box [x1, y1, x2, y2]": f"[{bbox[0]:.0f}, {bbox[1]:.0f}, {bbox[2]:.0f}, {bbox[3]:.0f}]",
-                "Width (px)": f"{r['bbox_w_px']:.0f}",
-                "Height (px)": f"{r['bbox_h_px']:.0f}",
-                "Area (px²)": f"{r['bbox_area_px']:.0f}",
+                "Image Region": r.get("image_region", "—"),
             })
 
         with f_col2:
             st.caption(f"Showing **{len(table_rows)}** of **{len(records)}** detections ({selected_filter}).")
 
-        st.dataframe(pd.DataFrame(table_rows), width="stretch")
+        st.dataframe(pd.DataFrame(table_rows), width="stretch", hide_index=True)
     else:
         st.info("No vehicle detection records to display.")
 
     st.divider()
 
-    # Downloads Section
-    st.subheader("Export Results")
-    down_col1, down_col2, down_col3 = st.columns(3)
+    # Downloads (collapsed to keep the results view clean)
     base_name = Path(active_filename).stem
-
-    with down_col1:
-        img_bytes = encode_image_to_bytes(result["annotated_image"], format="jpg")
-        st.download_button(
-            "📥 Download Annotated Image (JPG)",
-            data=img_bytes,
-            file_name=f"{base_name}_annotated.jpg",
-            mime="image/jpeg",
-            width="stretch",
-        )
-    with down_col2:
-        csv_data = export_results_to_csv(result)
-        st.download_button(
-            "📊 Download Detection Ledger (CSV)",
-            data=csv_data,
-            file_name=f"{base_name}_detections.csv",
-            mime="text/csv",
-            width="stretch",
-        )
-    with down_col3:
-        json_data = export_results_to_json(result)
-        st.download_button(
-            "📋 Download Full Intelligence (JSON)",
-            data=json_data,
-            file_name=f"{base_name}_results.json",
-            mime="application/json",
-            width="stretch",
-        )
+    with st.expander("⬇️ Export results", expanded=False):
+        down_col1, down_col2, down_col3 = st.columns(3)
+        with down_col1:
+            img_bytes = encode_image_to_bytes(result["annotated_image"], format="jpg")
+            st.download_button(
+                "Annotated image (JPG)",
+                data=img_bytes,
+                file_name=f"{base_name}_annotated.jpg",
+                mime="image/jpeg",
+                width="stretch",
+            )
+        with down_col2:
+            csv_data = export_results_to_csv(result)
+            st.download_button(
+                "Detection ledger (CSV)",
+                data=csv_data,
+                file_name=f"{base_name}_detections.csv",
+                mime="text/csv",
+                width="stretch",
+            )
+        with down_col3:
+            json_data = export_results_to_json(result)
+            st.download_button(
+                "Full intelligence (JSON)",
+                data=json_data,
+                file_name=f"{base_name}_results.json",
+                mime="application/json",
+                width="stretch",
+            )
 
     # Methodology & Boundaries Expander (Phase D requirements)
     with st.expander("ℹ️ Kinematics & Carbon Boundary Notice", expanded=False):
@@ -2916,7 +2892,7 @@ def render_image_intelligence(artifacts_dir: Path) -> None:
             **Single-Photograph Perception Boundaries:**
             - **Observed Image Detections:** The results above represent an instantaneous spatial snapshot of the intersection.
             - **No Kinematic Extrapolation:** Vehicle speed, acceleration, deceleration, and idling durations cannot be measured reliably from a single static image. Consequently, **no speeds, motion states, or cumulative tailpipe emissions are fabricated or reported**.
-            - **Deterministic Carbon Accounting:** Instantaneous idle burn potential ($E_{\text{idle}} = \sum N_c \cdot r_{\text{idle}, c}$) is computed using certified Central Pollution Control Board (CPCB) BS-VI factors. Avoided emissions are computed using counterfactual signal clearance simulations in Python.
+            - **Deterministic Carbon Accounting:** The snapshot metric is a **1-minute idle burn potential** computed from CPCB BS-VI factors ($E_{\text{idle}} = \sum N_c \cdot r_{\text{idle}, c}$). Because a still frame has no stop or speed history, no avoided-emission figure or signal change is inferred from it.
             - **Video Digital Twin:** Dynamic mode-bin carbon accumulation ($E_{\text{vehicle}} = \sum r_{\text{mode}} \cdot \Delta t$) is exclusively generated from multi-frame video tracking in **Junction Video Operations** mode.
             - **Privacy Guarantee:** Uploaded images are processed entirely in local CPU volatile memory. No facial recognition, license plate recognition (ANPR), or external cloud API transmissions occur.
             """

@@ -43,6 +43,27 @@ class ImageValidationError(ValueError):
     pass
 
 
+def _apply_exif_orientation(raw_bytes: bytes, fallback_bgr: np.ndarray) -> np.ndarray:
+    """Rotate/flip a decoded image according to its EXIF orientation tag.
+
+    Phone uploads frequently store landscape pixels with an orientation tag; OpenCV
+    ignores it, which would feed sideways vehicles to the detector. Pillow is used
+    only when a non-trivial orientation tag is present.
+    """
+    try:
+        from PIL import Image, ImageOps
+
+        with Image.open(io.BytesIO(raw_bytes)) as pil_img:
+            orientation = pil_img.getexif().get(274, 1)
+            if orientation in (2, 3, 4, 5, 6, 7, 8):
+                corrected = ImageOps.exif_transpose(pil_img).convert("RGB")
+                return cv2.cvtColor(np.array(corrected), cv2.COLOR_RGB2BGR)
+    except Exception:
+        # Fall back to the OpenCV decode; never fail an upload on EXIF parsing.
+        pass
+    return fallback_bgr
+
+
 def validate_and_decode_image(
     input_data: Union[str, Path, bytes, np.ndarray],
     max_size_bytes: int = DEFAULT_MAX_IMAGE_SIZE_BYTES,
@@ -82,6 +103,7 @@ def validate_and_decode_image(
             raise ImageValidationError(
                 f"Failed to decode image from '{path.name}'. File may be corrupted or malformed."
             )
+        img = _apply_exif_orientation(path.read_bytes(), img)
 
     elif isinstance(input_data, bytes):
         if len(input_data) <= 0:
@@ -98,6 +120,7 @@ def validate_and_decode_image(
             raise ImageValidationError(
                 "Failed to decode image bytes. File may be corrupted, truncated, or in an unsupported format."
             )
+        img = _apply_exif_orientation(input_data, img)
 
     elif isinstance(input_data, np.ndarray):
         if input_data.size == 0:
@@ -150,6 +173,11 @@ def draw_detection_annotations(
     font_scale = max(0.4, base_dim / 1500.0)
     font_thickness = max(1, int(round(font_scale * 1.5)))
 
+    placed_labels: List[tuple[int, int, int, int]] = []
+
+    def _overlaps(a: tuple[int, int, int, int], b: tuple[int, int, int, int], pad: int = 2) -> bool:
+        return not (a[2] + pad < b[0] or b[2] + pad < a[0] or a[3] + pad < b[1] or b[3] + pad < a[1])
+
     for det in detections:
         cls_name = det.get("class_name", "vehicle")
         conf = det.get("confidence", 0.0)
@@ -166,22 +194,37 @@ def draw_detection_annotations(
         # 1. Bounding box
         cv2.rectangle(annotated, (x1, y1), (x2, y2), color, line_thickness)
 
-        # 2. Label badge
+        # 2. Label badge (kept inside the frame and away from other labels)
         label_text = f"#{idx} {cls_name} {conf:.2f}"
         (text_w, text_h), baseline = cv2.getTextSize(
             label_text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, font_thickness
         )
+        badge_h = text_h + baseline + 4
+        badge_w = text_w + 8
 
-        badge_y1 = max(0, y1 - text_h - baseline - 4)
-        badge_y2 = y1
-        badge_x2 = min(w - 1, x1 + text_w + 6)
+        badge_x1 = max(0, min(x1, w - 1 - badge_w))
+        badge_x2 = min(w - 1, badge_x1 + badge_w)
+        candidates = [
+            y1 - badge_h,          # above the box (preferred)
+            y1 + 2,                # just inside the top edge
+            y2 + 3,                # below the box
+            y1 - 2 * badge_h,      # second row above
+        ]
+        badge_y1 = 0
+        badge_y2 = badge_h
+        for cand in candidates:
+            cy1 = max(0, min(cand, h - 1 - badge_h))
+            rect = (badge_x1, cy1, badge_x2, cy1 + badge_h)
+            if not any(_overlaps(rect, other) for other in placed_labels):
+                badge_y1, badge_y2 = cy1, cy1 + badge_h
+                break
+        else:
+            badge_y1 = max(0, min(y1 - badge_h, h - 1 - badge_h))
+            badge_y2 = badge_y1 + badge_h
 
-        # If badge would clip above image top, draw inside the bounding box
-        if y1 - text_h - baseline - 4 < 0:
-            badge_y1 = y1
-            badge_y2 = y1 + text_h + baseline + 6
+        placed_labels.append((badge_x1, badge_y1, badge_x2, badge_y2))
 
-        cv2.rectangle(annotated, (x1, badge_y1), (badge_x2, badge_y2), color, -1)
+        cv2.rectangle(annotated, (badge_x1, badge_y1), (badge_x2, badge_y2), color, -1)
 
         # White or black text based on badge background contrast
         text_color = (0, 0, 0) if cls_name in ("motorcycle", "auto_rickshaw") else (255, 255, 255)
@@ -189,7 +232,7 @@ def draw_detection_annotations(
         cv2.putText(
             annotated,
             label_text,
-            (x1 + 3, text_y),
+            (badge_x1 + 4, text_y),
             cv2.FONT_HERSHEY_SIMPLEX,
             font_scale,
             text_color,

@@ -83,6 +83,7 @@ This project retrofits existing municipal CCTV traffic camera fleets into a real
   - ONNX Exports: `models/finetuned/best.onnx` (FP32, 43.29 FPS) and `models/finetuned/best_int8.onnx` (INT8 quantized, 33.12 FPS).
 - **A/B Evaluation & Gate Validation:** `scripts/ab_eval.py` executed to verify auto-rickshaw detection retention while safeguarding light vehicle recall. Auto-rickshaw detection contact sheet generated (`ab_autos.png`).
 - **Model Governance:** Detailed technical documentation committed in `docs/model_card.md` and `docs/data_provenance.md`.
+- **Mentor / Evaluator Notes:** `docs/MENTOR_NOTES.md` is a 60-second pitch, 3-minute demo script, verified numbers cheat sheet, honest-caveats list, and Q&A card. `docs/source_ledger.csv` is the same provenance ledger as a spreadsheet (asset → what it is used for → where it came from → licence).
 
 ### ✅ M1 — Perception & Kinematics Pipeline
 - **Detector & Tracker:** `perception/detector.py` and `perception/tracker.py` integrate Ultralytics YOLO with ByteTrack (`bytetrack.yaml`), dynamically mapping class IDs (`model.names ∩ active_classes`).
@@ -124,7 +125,7 @@ This project retrofits existing municipal CCTV traffic camera fleets into a real
   - Model size: 5.19 MB
   - CPU FPS: 28.47 FPS (PyTorch CPU) / 43.29 FPS (ONNX FP32)
   - Memory: 1.75 MB peak RAM footprint
-  - Telemetry bandwidth: ~30.9 KB/min (ultra-low bandwidth telemetry uplink)
+  - Telemetry bandwidth: ~135 KB/min (ultra-low bandwidth telemetry uplink)
 - **Deployment Documentation:** `docs/deployment.md` covering ICCC integration, ATCS tie-ins, edge hardware BOM, and privacy architecture.
 
 ### ✅ Test Suite Health
@@ -175,7 +176,7 @@ This project retrofits existing municipal CCTV traffic camera fleets into a real
 - **Strict Guardrails:** Guaranteed absence of fabricated speeds, accelerations, motion states, or emissions for still images.
 - **Streamlit Integration (`dashboard/app.py`):** Sidebar navigation mode offering image upload, confidence slider, process button, original vs annotated preview, KPI cards, class breakdown chart, detection table, and JPG/CSV/JSON exports.
 - **Test Suite Health:** **73/73 tests passing** (`pytest -q` in ~8s) with dedicated coverage in `tests/test_image_intelligence.py` and the Streamlit preset/advisory integration test.
-- **Stable-Camera Video Validation:** Re-ran the full pipeline on the 45s junction clip (frame skip 2) in 27s (~25 processed FPS): 60 unique tracks, 2,002 car / 861 motorcycle / 749 auto-rickshaw observations, 61.9 g CO₂ accumulated, 21 counted vehicles in the 60s window, no idle/stop events (free-flowing traffic), rules advisory correctly returned `no_action`.
+- **Stable-Camera Video Validation:** Re-ran the full pipeline on the 45s junction clip (frame skip 2) in ≈44s cold start (26.6 FPS model-only benchmark, ≈15 FPS end-to-end): 60 unique tracks, 2,002 car / 861 motorcycle / 749 auto-rickshaw observations, 61.9 g CO₂ accumulated, 21 counted vehicles in the 60s window, no idle/stop events (free-flowing traffic), rules advisory correctly returned `no_action`.
 - **Cross-Camera Generalization Check:** Four unrelated stable-camera stills (Delhi aerial, Hyderabad flyover, Rishikesh bus/motorcycles, old-city truck) degraded sharply — nearly all detections collapsed to `car`, buses/trucks were missed, and billboard text produced false positives. The model is viewpoint-specific; per-camera fine-tuning is required for new deployments.
 - **CO₂ KPI Correction:** The corridor total now sums each track's final cumulative grams instead of reporting the single highest track, which understated the 45s clip (9.7 g → 61.9 g).
 
@@ -187,7 +188,7 @@ This project retrofits existing municipal CCTV traffic camera fleets into a real
 - **Declutter:** Removed the no-op What-If jump button, the misleading annualised-extrapolation card, the duplicate "Original Photograph" tab, the duplicate video-viewport sidebar card, and the technical video metadata strip (filename / size / codec). The choke-point table now auto-sizes instead of reserving empty rows, image identity hashes file bytes instead of filename/size, and the tracked-vehicle foot reads "telemetry span" to avoid implying the playback duration.
 - **Visual Analytics:** Plotly kinematic-state donut with observation counts and a custom 4×4 spatial choke heatmap, replacing generic Streamlit bar charts.
 - **Motion & Interaction Refresh:** Animated radial backdrop, glass hero with gradient headline and radar-orbit motif, staggered KPI entrance, hover lift/glow + sheen sweep on stat and directive cards, shine sweep and press feedback on buttons, mint hover/selected states for sidebar nav and tabs, image zoom on hover, slider/input focus glow, and Plotly transition animations. All motion is suppressed under `prefers-reduced-motion`.
-- **Chart Consistency:** Replaced the remaining default Streamlit bar charts (fleet taxonomy, approach quadrants) with themed Plotly bars using the class colour palette and hover tooltips.
+- **Chart Consistency:** Replaced the remaining default Streamlit bar charts (fleet taxonomy, image quadrants) with themed Plotly bars using the class colour palette and hover tooltips.
 - **Synced Playback Controls:** AI-overlay / raw-feed stream switch, overlay re-render action, Start / Midpoint / End time-window jumps, and active-window row counts.
 - **Operator Directive Feed:** Compact directive cards with mode/status pills, savings/confidence, **Dispatch** and **Dismiss** actions, mode filters, and a collapsed archive for older records.
 - **What-If Lab:** Reset-to-baseline callback, scenario KPI band, per-class avoided-CO₂ chart, audit table, and CSV export.
@@ -248,6 +249,8 @@ When handing off this project to another LLM, enforce the following non-negotiab
 | `scripts/render_overlay.py` | Complete | Video annotator with state colors and CO2 values |
 | `scripts/benchmark.py` | Complete | Measures CPU FPS, memory, telemetry bandwidth |
 | `docs/deployment.md` | Complete | One-pager edge deployment & ICCC integration doc |
+| `docs/MENTOR_NOTES.md` | Complete | Pitch, demo script, numbers, caveats, Q&A and full source provenance |
+| `docs/source_ledger.csv` | Complete | Spreadsheet version of the asset/model/data/licence ledger |
 | `docs/model_card.md` | Complete | Technical card for fine-tuned IDD vehicle detector |
 | `docs/contracts/directive.schema.json` | Complete | Exported Pydantic v2 JSON Schema for frontend |
 | `README.md` | Complete | Comprehensive project readme with architecture & run steps |

@@ -29,7 +29,7 @@ flowchart TD
     end
 
     subgraph TelemetryUplink ["Zero-PII Telemetry Uplink (WAN)"]
-        Uplink["Numerical Telemetry Only\n(~30.9 KB/min • Parquet / JSON)\n[NO VIDEO EGRESS • NO ANPR • NO PII]"]
+        Uplink["Numerical Telemetry Only\n(~135 KB/min • Parquet / JSON)\n[NO VIDEO EGRESS • NO ANPR • NO PII]"]
     end
 
     subgraph MunicipalOperations ["ICCC / Central Municipal Operations"]
@@ -124,7 +124,7 @@ Users can analyze stationary intersection photographs without requiring the cont
   2. Click a **1-click CCTV preset** (moving auto-rickshaw or parked service auto), or upload a custom photograph (`.jpg`, `.jpeg`, `.png`, or `.webp`, max 20 MB).
   3. Adjust the detection confidence threshold (default: `0.25`).
   4. Click **Process image & generate advisory** to run CPU-only YOLO inference and the deterministic dispatcher.
-  5. Inspect annotated bounding boxes, fleet KPIs, the carbon advisory, spatial approach quadrants, and the per-class CPCB index.
+  5. Inspect annotated bounding boxes, fleet KPIs, the carbon advisory, the image-quadrant distribution, and the per-class CPCB index.
   6. Download the annotated image, detection ledger CSV, full JSON intelligence, or the advisory JSON.
   7. Optionally click **Publish advisory to directive log** to append it to `artifacts/directives.jsonl`.
   8. Use the sidebar **↻ Re-run analysis** action to repeat inference at the current threshold, or **♻ Reload weights** to clear cached YOLO weights and reload them from disk.
@@ -137,6 +137,8 @@ Users can analyze stationary intersection photographs without requiring the cont
   - Zero PII: Excludes facial recognition and license plate recognition (ANPR).
 - **Physical Boundaries (No Fabricated Kinematics or Emissions)**:
   - Single still images represent instantaneous snapshots. Speed, acceleration, stop events, and cumulative tailpipe emissions are **never fabricated from a static photograph**. Dynamic emissions are exclusively modeled in the video pipeline.
+  - Still-image advisories are therefore snapshot-only: idle ratio, stop events, and choke dwell are unavailable, so the dispatcher defaults to **no signal change** with `0.0 g` avoided carbon. Only the 1-minute idle-burn potential and fleet composition are reported.
+  - Scenes whose mean detection confidence falls below 50% are flagged in the UI so counts are treated as indicative and verified manually.
 
 ### Step 6: Launch Next.js ATCS Municipal Operations Center
 ```bash
@@ -183,7 +185,7 @@ python scripts/swap_video.py /path/to/any_video.mp4
 +-------------------------------------------------------------------------+
                                     │
                                     ▼ Telemetry-Only Uplink
-                          (~30.9 KB / minute bandwidth)
+                          (~135 KB / minute bandwidth)
                           [Zero Video Egress / Zero PII]
                                     │
 +-------------------------------------------------------------------------+
@@ -242,7 +244,7 @@ $$E_{\text{scenario}}(c) = E_{\text{baseline}}(c) \cdot (1 - s_{\text{EV}}(c))$$
 The Eco-Kinetic platform operates under a **Strict Privacy-by-Design** architecture:
 - **No Video Egress:** Raw video frames never leave the physical edge device. Video decoding, object detection, and tracking are executed entirely within volatile RAM and discarded after inference.
 - **Zero PII & No ANPR:** The model does NOT read license plates, face recognition is strictly excluded, and bounding box coordinates are normalized ($0.0 \text{ to } 1.0$) relative to the camera frame.
-- **Minimal Uplink Footprint:** The processing boundary only transmits numerical telemetry rows (`video_time_s`, `track_id`, `cls`, `cx_norm`, `cy_norm`, `speed_kmh`, `state`) requiring just **~30.9 KB/minute** bandwidth over secure TLS.
+- **Minimal Uplink Footprint:** The processing boundary only transmits numerical telemetry rows (`video_time_s`, `track_id`, `cls`, `cx_norm`, `cy_norm`, `speed_kmh`, `state`) requiring just **~135 KB/minute** bandwidth over secure TLS.
 
 ---
 
@@ -251,7 +253,10 @@ The Eco-Kinetic platform operates under a **Strict Privacy-by-Design** architect
 1. **COCO Taxonomy vs. Indian Road Realities:** Off-the-shelf COCO YOLO models do not include the 3-wheeler auto-rickshaw class (classifying them ambiguously as cars). We resolve this by providing fine-tuned weights on the **India Driving Dataset (IDD-FGVD)** (`models/finetuned/best.pt`) explicitly recognizing the 5 core Indian road classes.
 2. **Speed Proxy Calibration:** Speed estimation utilizes bounding box length normalization against class mean lengths. Perspective distortion is mitigated through camera calibration homography zones (`config/camera_calibration.yaml`), but extreme wide-angle lens distortion requires site-specific homography matrices.
 3. **CPU Frame Skipping:** To maintain real-time $\ge 25 \text{ FPS}$ tracking throughput on commodity edge CPUs, the default configuration processes every 2nd frame (`frame_skip=2`) with continuous kinematics interpolation.
-4. **Camera-Domain Specificity:** The shipped fine-tuned weights are calibrated to the deployment junction's viewpoint. On that 45s stable-camera clip the pipeline tracked 60 unique vehicles (2,002 car / 861 motorcycle / 749 auto-rickshaw observations) at ~25 processed FPS and computed 61.9 g CO₂. On four unrelated stable-camera stills (Delhi, Hyderabad, Rishikesh) detection degraded sharply — most vehicles collapsed to `car`, buses/trucks were missed, and billboard text produced false positives. Re-train or fine-tune per camera viewpoint before cross-site deployment.
+4. **Camera-Domain Specificity:** The shipped fine-tuned weights are calibrated to the deployment junction's viewpoint. On that 45s stable-camera clip the pipeline tracked 60 unique vehicles (2,002 car / 861 motorcycle / 749 auto-rickshaw observations) and computed 61.9 g CO₂; the detector benchmarks at 26.6 FPS on CPU, with ≈44 s end-to-end cold start including model load and tracking. On four unrelated stable-camera stills (Delhi, Hyderabad, Rishikesh) detection degraded sharply — most vehicles collapsed to `car`, buses/trucks were missed, and billboard text produced false positives. Re-train or fine-tune per camera viewpoint before cross-site deployment.
+5. **Demo Telemetry Fixture Provenance:** `artifacts/telemetry.parquet` (the 236-track ledger the dashboard opens with) was generated with the stock COCO class map (`2→car`, `3→motorcycle`, `5→bus`, `7→truck`), so it contains **no `auto_rickshaw` rows**. The live fine-tuned pipeline run above and Image Intelligence do detect the class. Regenerate the fixture with `models/finetuned/best.pt` before quoting per-class totals from the video console. See `docs/MENTOR_NOTES.md` §10.
+
+**Evaluator pack:** `docs/MENTOR_NOTES.md` (pitch, demo script, verified numbers, caveats, Q&A) and `docs/source_ledger.csv` (asset → use → origin → licence, openable in Sheets/Excel).
 
 ---
 

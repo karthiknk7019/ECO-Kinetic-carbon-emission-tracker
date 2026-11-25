@@ -19,6 +19,7 @@ artifacts/*
 docs/*
 !docs/.gitkeep
 !docs/*.md
+!docs/source_ledger.csv
 !docs/contracts/
 !docs/contracts/**
 __pycache__/
